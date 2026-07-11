@@ -285,6 +285,7 @@ textarea {
   gap: 12px;
   width: min(1460px, calc(100% - 28px));
   height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
   padding: 14px 0;
 }
@@ -2489,7 +2490,7 @@ p {
     width: min(100% - 16px, 680px);
     grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 10px;
-    padding: max(18px, calc(env(safe-area-inset-top) + 12px)) 0 8px;
+    padding: max(18px, calc(env(safe-area-inset-top) + 12px)) 0 max(10px, calc(env(safe-area-inset-bottom) + 8px));
   }
 
   .gamebar {
@@ -2980,28 +2981,62 @@ p {
   }
 
   .room-card {
-    grid-template-columns: 78px minmax(0, 1fr);
-    align-items: center;
-    min-height: 122px;
+    grid-template-areas:
+      "avatar title"
+      "avatar meta"
+      "button button";
+    grid-template-columns: 84px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px 12px;
+    min-height: 0;
+    overflow: hidden;
+    padding: 12px;
   }
 
   .room-avatar {
-    width: 78px;
-    height: 96px;
+    grid-area: avatar;
+    width: 84px;
+    height: 118px;
+    align-self: stretch;
   }
 
   .room-copy {
-    display: grid;
-    gap: 8px;
+    display: contents;
   }
 
-  .room-copy h2,
+  .room-copy h2 {
+    grid-area: title;
+    align-self: end;
+    margin-bottom: 0;
+    font-size: clamp(1.08rem, 5.4vw, 1.35rem);
+    line-height: 1.05;
+    white-space: normal;
+  }
+
   .room-meta {
+    grid-area: meta;
+    gap: 5px;
     margin-bottom: 0;
   }
 
-  .room-meta {
-    gap: 4px;
+  .room-meta span {
+    min-height: 26px;
+    padding: 4px 7px;
+    font-size: 0.7rem;
+  }
+
+  .room-copy .join-button {
+    grid-area: button;
+    min-height: 42px;
+    margin-top: 2px;
+  }
+
+  .screen-lobby .lobby-layout {
+    display: block;
+  }
+
+  .screen-lobby .yard-preview {
+    display: none;
   }
 
   .fight-button {
