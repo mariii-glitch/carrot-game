@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Carrot Game</title>
-    <link rel="stylesheet" href="styles.css?v=polish8" />
+    <link rel="stylesheet" href="styles.css?v=polish9" />
   </head>
   <body>
     <div class="garden-sky" aria-hidden="true">
@@ -127,13 +127,7 @@
 
               <div class="control-panel">
                 <span class="field-label">Headwear</span>
-                <div class="segmented gear-grid" id="headwearPicker" aria-label="Kopfbedeckung">
-                  <button type="button" data-headwear="cap">Cap</button>
-                  <button type="button" data-headwear="visor">Visor</button>
-                  <button type="button" data-headwear="beanie">Beanie</button>
-                  <button type="button" data-headwear="crown">Crown</button>
-                  <button type="button" data-headwear="none">None</button>
-                </div>
+                <div class="segmented gear-grid" id="headwearPicker" aria-label="Kopfbedeckung"></div>
               </div>
 
               <div class="control-panel">
@@ -197,8 +191,10 @@
             <button id="createRoom" class="secondary-button compact" type="button">Eigenen Ring eröffnen</button>
           </div>
 
+          <div id="mapStrip" class="map-strip" aria-label="Freischaltbare Maps"></div>
+
           <div class="lobby-layout">
-            <div class="yard-preview" aria-hidden="true">
+            <div id="yardPreview" class="yard-preview" aria-hidden="true">
               <div class="garden-ring-mini">
                 <span class="mini-rope rope-one"></span>
                 <span class="mini-rope rope-two"></span>
@@ -328,8 +324,10 @@
             </div>
 
             <div id="fightResult" class="fight-result" hidden>
+              <div id="winnerBanner" class="winner-banner"></div>
               <strong id="resultTitle">Gewonnen</strong>
               <span id="resultCopy"></span>
+              <ol id="resultReport" class="fight-report"></ol>
               <div class="result-actions">
                 <button id="rematchButton" class="secondary-button" type="button">Revanche</button>
                 <button id="backToLobby" class="primary-button" type="button">Zur Lobby</button>
@@ -349,6 +347,6 @@
       </nav>
     </div>
 
-    <script src="app.js?v=polish8"></script>
+    <script src="app.js?v=polish9"></script>
   </body>
 </html>

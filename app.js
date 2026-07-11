@@ -48,8 +48,70 @@ const defaultProfile = {
   points: 0,
   streak: 0,
   bestStreak: 0,
+  selectedArena: "garden",
+  lastReport: null,
   careerLog: [],
 };
+
+const headwearOptions = [
+  { id: "cap", label: "Cap", requirement: null },
+  { id: "visor", label: "Visor", requirement: null },
+  { id: "beanie", label: "Beanie", requirement: null },
+  { id: "crown", label: "Crown", requirement: null },
+  { id: "none", label: "None", requirement: null },
+  { id: "flower", label: "Flower", requirement: { points: 90, text: "90P" } },
+  { id: "chef", label: "Chef", requirement: { points: 180, wins: 2, text: "180P + 2W" } },
+  { id: "bucket", label: "Bucket", requirement: { points: 340, wins: 4, text: "340P + 4W" } },
+  { id: "halo", label: "Halo", requirement: { points: 520, wins: 7, text: "520P + 7W" } },
+];
+
+const arenaMaps = [
+  {
+    id: "garden",
+    name: "Classic Beet",
+    shortName: "Beet",
+    requirement: null,
+    vibe: "ehrlicher Rasen, faire Seile",
+    pointBonus: 1,
+    eventBias: ["wind", "sun", "mud", "crowd"],
+  },
+  {
+    id: "greenhouse",
+    name: "Glashaus Gong",
+    shortName: "Glashaus",
+    requirement: { points: 90, wins: 1, text: "90P + 1W" },
+    vibe: "warm, laut, Fokus lädt schneller",
+    pointBonus: 1.08,
+    eventBias: ["sun", "sun", "crowd", "wind"],
+  },
+  {
+    id: "mudpit",
+    name: "Matsch-Dojo",
+    shortName: "Matsch",
+    requirement: { points: 210, wins: 3, text: "210P + 3W" },
+    vibe: "rutschig, dreckig, viel Drama",
+    pointBonus: 1.16,
+    eventBias: ["mud", "mud", "wind", "crowd"],
+  },
+  {
+    id: "moonlight",
+    name: "Mondlicht-Mulde",
+    shortName: "Mond",
+    requirement: { points: 340, wins: 5, text: "340P + 5W" },
+    vibe: "Nachtduell mit extra Swagger",
+    pointBonus: 1.25,
+    eventBias: ["wind", "crowd", "sun", "crowd"],
+  },
+  {
+    id: "pumpkin",
+    name: "Kuerbis-Kolosseum",
+    shortName: "Kuerbis",
+    requirement: { points: 520, wins: 7, text: "520P + 7W" },
+    vibe: "Endboss-Ring mit dicken Preisen",
+    pointBonus: 1.42,
+    eventBias: ["crowd", "mud", "sun", "wind"],
+  },
+];
 
 const outfitPresets = [
   {
@@ -111,6 +173,7 @@ const rooms = [
     id: "basil-ring",
     host: "Basil Ben",
     corner: "Basilikum-Ecke",
+    arenaId: "garden",
     record: "4-1",
     pot: 24,
     difficulty: 0.82,
@@ -131,6 +194,7 @@ const rooms = [
     id: "tomato-turf",
     host: "Rote Rita",
     corner: "Tomatenbeet",
+    arenaId: "greenhouse",
     record: "8-3",
     pot: 38,
     difficulty: 1.08,
@@ -151,6 +215,7 @@ const rooms = [
     id: "mint-court",
     host: "Mighty Mint",
     corner: "Minzpfad",
+    arenaId: "garden",
     record: "2-0",
     pot: 22,
     difficulty: 0.72,
@@ -171,6 +236,7 @@ const rooms = [
     id: "watering-hole",
     host: "Giesskanne Gio",
     corner: "Wassertonne",
+    arenaId: "mudpit",
     record: "11-6",
     pot: 46,
     difficulty: 1.2,
@@ -191,6 +257,7 @@ const rooms = [
     id: "soil-gym",
     host: "Kompost Kira",
     corner: "Kompost-Gym",
+    arenaId: "greenhouse",
     record: "6-6",
     pot: 30,
     difficulty: 0.96,
@@ -204,6 +271,69 @@ const rooms = [
       headwear: "none",
       leaves: "wild",
       pattern: "dots",
+      face: "cool",
+    },
+  },
+  {
+    id: "moon-chili",
+    host: "Chili Chantal",
+    corner: "Mondlicht-Mulde",
+    arenaId: "moonlight",
+    record: "14-4",
+    pot: 58,
+    difficulty: 1.28,
+    evasion: 0.2,
+    guard: 0.12,
+    tactic: "Tempo & Taunt",
+    style: {
+      capColor: "#e35c91",
+      shortsColor: "#222222",
+      gloveColor: "#ffc857",
+      headwear: "flower",
+      leaves: "wild",
+      pattern: "stripe",
+      face: "grin",
+    },
+  },
+  {
+    id: "bucket-lauch",
+    host: "Lauch Leo",
+    corner: "Matsch-Dojo",
+    arenaId: "mudpit",
+    record: "10-9",
+    pot: 48,
+    difficulty: 1.14,
+    evasion: 0.08,
+    guard: 0.26,
+    tactic: "Tank im Beet",
+    style: {
+      capColor: "#f4e3b0",
+      shortsColor: "#4776b4",
+      gloveColor: "#2e9d5b",
+      headwear: "bucket",
+      leaves: "classic",
+      pattern: "dots",
+      face: "focus",
+    },
+  },
+  {
+    id: "pumpkin-boss",
+    host: "Kuerbis Kurt",
+    corner: "Kolosseum",
+    arenaId: "pumpkin",
+    record: "22-2",
+    pot: 82,
+    difficulty: 1.5,
+    evasion: 0.14,
+    guard: 0.2,
+    tactic: "Endboss-Klatscher",
+    style: {
+      capColor: "#ffc857",
+      shortsColor: "#8657c5",
+      gloveColor: "#232323",
+      headwear: "halo",
+      leaves: "sprout",
+      pattern: "stripe",
       face: "cool",
     },
   },
@@ -272,6 +402,8 @@ const els = {
   createRoom: document.querySelector("#createRoom"),
   waitingNotice: document.querySelector("#waitingNotice"),
   waitingText: document.querySelector("#waitingText"),
+  mapStrip: document.querySelector("#mapStrip"),
+  yardPreview: document.querySelector("#yardPreview"),
   roomList: document.querySelector("#roomList"),
   stripPoints: document.querySelector("#stripPoints"),
   stripRecord: document.querySelector("#stripRecord"),
@@ -303,8 +435,10 @@ const els = {
   energyBar: document.querySelector("#energyBar"),
   focusBar: document.querySelector("#focusBar"),
   fightResult: document.querySelector("#fightResult"),
+  winnerBanner: document.querySelector("#winnerBanner"),
   resultTitle: document.querySelector("#resultTitle"),
   resultCopy: document.querySelector("#resultCopy"),
+  resultReport: document.querySelector("#resultReport"),
   rematchButton: document.querySelector("#rematchButton"),
   backToLobby: document.querySelector("#backToLobby"),
   fightLog: document.querySelector("#fightLog"),
@@ -356,6 +490,54 @@ function choice(items) {
   return items[randomBetween(0, items.length - 1)];
 }
 
+function meetsRequirement(player, requirement) {
+  if (!requirement) return true;
+  const pointsReady = player.points >= (requirement.points || 0);
+  const winsReady = player.wins >= (requirement.wins || 0);
+  return pointsReady && winsReady;
+}
+
+function getArena(id) {
+  return arenaMaps.find((arena) => arena.id === id) || arenaMaps[0];
+}
+
+function isArenaUnlocked(id, player = profile) {
+  return meetsRequirement(player, getArena(id).requirement);
+}
+
+function isHeadwearUnlocked(id, player = profile) {
+  const option = headwearOptions.find((item) => item.id === id);
+  return !option || meetsRequirement(player, option.requirement);
+}
+
+function currentArena(player = profile) {
+  return isArenaUnlocked(player.selectedArena, player) ? getArena(player.selectedArena) : arenaMaps[0];
+}
+
+function unlockNamesFor(player) {
+  const headwear = headwearOptions
+    .filter((item) => item.requirement && meetsRequirement(player, item.requirement))
+    .map((item) => `Hut: ${item.label}`);
+  const maps = arenaMaps
+    .filter((arena) => arena.requirement && meetsRequirement(player, arena.requirement))
+    .map((arena) => `Map: ${arena.name}`);
+  return [...headwear, ...maps];
+}
+
+function newUnlocksBetween(before, after) {
+  const beforeSet = new Set(unlockNamesFor(before));
+  return unlockNamesFor(after).filter((name) => !beforeSet.has(name));
+}
+
+function sanitizeProfileUnlocks() {
+  if (!isHeadwearUnlocked(profile.headwear)) {
+    profile.headwear = "cap";
+  }
+  if (!isArenaUnlocked(profile.selectedArena)) {
+    profile.selectedArena = "garden";
+  }
+}
+
 function rankForPoints(points) {
   if (points >= 520) return "Wurzellegende";
   if (points >= 260) return "Garten-Champ";
@@ -364,7 +546,18 @@ function rankForPoints(points) {
 }
 
 function styleScoreFor(player) {
-  const headwear = player.headwear === "none" ? 3 : player.headwear === "crown" ? 24 : 14;
+  const headwearScores = {
+    none: 3,
+    cap: 14,
+    visor: 14,
+    beanie: 16,
+    crown: 24,
+    flower: 26,
+    chef: 29,
+    bucket: 33,
+    halo: 38,
+  };
+  const headwear = headwearScores[player.headwear] || 14;
   const leaves = player.leaves === "wild" ? 14 : player.leaves === "sprout" ? 11 : 7;
   const pattern = player.pattern === "solid" ? 7 : 16;
   const colorMix = new Set([player.capColor, player.shortsColor, player.gloveColor]).size * 5;
@@ -377,7 +570,8 @@ function badgesForProfile(player) {
     { name: "Sieg im Beet", unlocked: player.wins > 0 },
     { name: "Dreier-Serie", unlocked: player.bestStreak >= 3 },
     { name: "Style-Möhre", unlocked: styleScoreFor(player) >= 70 },
-    { name: "Karottenkrone", unlocked: player.points >= 260 },
+    { name: "Glashaus-Gong", unlocked: isArenaUnlocked("greenhouse", player) },
+    { name: "Matsch-Mut", unlocked: isArenaUnlocked("mudpit", player) },
     { name: "Root Rush Club", unlocked: player.points >= 520 },
   ];
 }
@@ -445,6 +639,52 @@ function renderSwatches(container, colors, property) {
   });
 }
 
+function renderHeadwearOptions() {
+  els.headwearPicker.innerHTML = "";
+  headwearOptions.forEach((option) => {
+    const unlocked = isHeadwearUnlocked(option.id);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.headwear = option.id;
+    button.disabled = !unlocked;
+    button.classList.toggle("is-locked", !unlocked);
+    button.setAttribute("aria-pressed", String(profile.headwear === option.id));
+    button.innerHTML = unlocked
+      ? `<span>${option.label}</span>`
+      : `<span>${option.label}</span><small>${option.requirement.text}</small>`;
+    els.headwearPicker.append(button);
+  });
+}
+
+function renderMaps() {
+  const selectedArena = currentArena();
+  profile.selectedArena = selectedArena.id;
+  els.mapStrip.innerHTML = "";
+  els.yardPreview.dataset.map = selectedArena.id;
+
+  arenaMaps.forEach((arena) => {
+    const unlocked = isArenaUnlocked(arena.id);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "map-card";
+    button.classList.toggle("is-active", selectedArena.id === arena.id);
+    button.classList.toggle("is-locked", !unlocked);
+    button.disabled = !unlocked;
+    button.dataset.map = arena.id;
+    button.innerHTML = `
+      <strong>${arena.shortName}</strong>
+      <span>${unlocked ? arena.vibe : arena.requirement.text}</span>
+    `;
+    button.addEventListener("click", () => {
+      profile.selectedArena = arena.id;
+      saveProfileData();
+      renderProfile({ syncInput: false });
+      playSfx("event");
+    });
+    els.mapStrip.append(button);
+  });
+}
+
 function leavesSvg(type) {
   if (type === "wild") {
     return `
@@ -488,6 +728,38 @@ function headwearSvg(type, color) {
       <path d="M58 60l8-29 20 19 12-28 14 28 20-19 6 29c-22 8-56 8-80 0z" fill="${color}"/>
       <path d="M63 58c17 6 47 7 70 0" stroke="rgba(0,0,0,0.2)" stroke-width="4" stroke-linecap="round"/>
       <circle cx="66" cy="30" r="4" fill="#fff8bd"/><circle cx="99" cy="22" r="4" fill="#fff8bd"/><circle cx="132" cy="30" r="4" fill="#fff8bd"/>
+    `;
+  }
+  if (type === "flower") {
+    return `
+      <path d="M58 56c21-9 53-9 76 0" fill="none" stroke="#2e9d5b" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="66" cy="47" r="8" fill="#e35c91"/><circle cx="66" cy="47" r="3" fill="#ffc857"/>
+      <circle cx="93" cy="41" r="8" fill="#fff8bd"/><circle cx="93" cy="41" r="3" fill="#ffc857"/>
+      <circle cx="121" cy="47" r="8" fill="#80bde8"/><circle cx="121" cy="47" r="3" fill="#ffc857"/>
+    `;
+  }
+  if (type === "chef") {
+    return `
+      <path d="M63 58c6-15 19-20 33-15 13-8 30-2 35 15-19 8-48 8-68 0z" fill="#fff8e5"/>
+      <circle cx="72" cy="43" r="15" fill="#fff8e5"/>
+      <circle cx="96" cy="35" r="18" fill="#fff8e5"/>
+      <circle cx="121" cy="43" r="15" fill="#fff8e5"/>
+      <path d="M66 58c16 6 42 6 61 0" stroke="rgba(0,0,0,0.16)" stroke-width="4" stroke-linecap="round"/>
+    `;
+  }
+  if (type === "bucket") {
+    return `
+      <path d="M62 32h70l-8 32c-19 7-39 7-57 0z" fill="${color}"/>
+      <path d="M68 34c8-15 47-15 57 0" fill="none" stroke="#f8f4e9" stroke-width="5" stroke-linecap="round"/>
+      <path d="M65 46h63" stroke="rgba(0,0,0,0.18)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="72" cy="39" r="4" fill="#f8f4e9"/><circle cx="122" cy="39" r="4" fill="#f8f4e9"/>
+    `;
+  }
+  if (type === "halo") {
+    return `
+      <ellipse cx="97" cy="30" rx="34" ry="10" fill="none" stroke="#ffc857" stroke-width="7"/>
+      <path d="M63 61c19 8 50 8 69 0" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round"/>
+      <path d="M75 53c10 4 32 5 43 0" stroke="rgba(255,255,255,0.48)" stroke-width="4" stroke-linecap="round"/>
     `;
   }
   return `
@@ -566,12 +838,14 @@ function carrotSvg(style = {}, options = {}) {
 }
 
 function outfitLabel(player) {
-  const head = player.headwear === "none" ? "No hat" : player.headwear;
+  const option = headwearOptions.find((item) => item.id === player.headwear);
+  const head = player.headwear === "none" ? "No hat" : option?.label || player.headwear;
   return `${head} · ${player.pattern} shorts · ${player.leaves}`;
 }
 
 function renderProfile(options = {}) {
   const { syncInput = true } = options;
+  sanitizeProfileUnlocks();
   if (syncInput) {
     els.carrotName.value = profile.name;
   }
@@ -588,10 +862,14 @@ function renderProfile(options = {}) {
   renderSwatches(els.capSwatches, capColors, "capColor");
   renderSwatches(els.shortsSwatches, shortsColors, "shortsColor");
   renderSwatches(els.gloveSwatches, gloveColors, "gloveColor");
+  renderHeadwearOptions();
   renderSegmented(els.headwearPicker, "headwear", "headwear");
   renderSegmented(els.leafPicker, "leaves", "leaves");
   renderSegmented(els.patternPicker, "pattern", "pattern");
   renderSegmented(els.facePicker, "face", "face");
+  renderMaps();
+  renderRooms();
+  renderFeaturedFight();
 
   els.stripPoints.textContent = String(profile.points);
   els.stripRecord.textContent = `${profile.wins}-${profile.losses}`;
@@ -640,30 +918,40 @@ function renderPresets() {
 function renderRooms() {
   els.roomList.innerHTML = "";
   rooms.forEach((room) => {
+    const arena = getArena(room.arenaId);
+    const locked = !isArenaUnlocked(arena.id);
+    const pot = Math.round(room.pot * arena.pointBonus);
     const card = document.createElement("article");
     card.className = "room-card";
+    card.classList.toggle("is-locked", locked);
     card.innerHTML = `
       <div class="room-avatar">${carrotSvg(room.style, { small: true, mirror: true })}</div>
       <div class="room-copy">
         <h2>${room.host}</h2>
         <div class="room-meta">
           <span>${room.corner}</span>
+          <span>${arena.shortName}</span>
           <span>${room.record}</span>
-          <span>${room.pot} Punkte</span>
+          <span>${pot} Punkte</span>
           <span>${room.tactic}</span>
         </div>
-        <button class="join-button" type="button">Beitreten</button>
+        <button class="join-button" type="button" ${locked ? "disabled" : ""}>
+          ${locked ? `Gesperrt: ${arena.requirement.text}` : "Beitreten"}
+        </button>
       </div>
     `;
-    card.querySelector("button").addEventListener("click", () => startFight(room));
+    card.querySelector("button").addEventListener("click", () => {
+      if (!locked) startFight(room);
+    });
     els.roomList.append(card);
   });
 }
 
 function renderFeaturedFight() {
-  const featured = rooms[0];
+  const featured = rooms.find((room) => isArenaUnlocked(room.arenaId)) || rooms[0];
+  const arena = getArena(featured.arenaId);
   els.featuredOpponent.textContent = `${featured.host} wartet`;
-  els.featuredCopy.textContent = `${featured.corner}, ${featured.pot} Punkte, ${featured.tactic}.`;
+  els.featuredCopy.textContent = `${arena.shortName}, ${Math.round(featured.pot * arena.pointBonus)} Punkte, ${featured.tactic}.`;
 }
 
 function makeRandomOpponent() {
@@ -673,7 +961,8 @@ function makeRandomOpponent() {
   return {
     id: `guest-${Date.now()}`,
     host: choice(botNames),
-    corner: "Frischer Ring",
+    corner: currentArena().name,
+    arenaId: currentArena().id,
     record: `${randomBetween(0, 9)}-${randomBetween(0, 6)}`,
     pot: randomBetween(18, 42),
     difficulty: Math.random() > 0.55 ? 1.05 : 0.86,
@@ -684,7 +973,7 @@ function makeRandomOpponent() {
       capColor: cap,
       shortsColor: shorts,
       gloveColor: gloves,
-      headwear: choice(["cap", "visor", "beanie", "crown", "none"]),
+      headwear: choice(["cap", "visor", "beanie", "crown", "none", "flower", "chef"]),
       leaves: choice(["classic", "wild", "sprout"]),
       pattern: choice(["solid", "stripe", "dots"]),
       face: choice(["cool", "grin", "focus"]),
@@ -712,9 +1001,11 @@ function startFight(room) {
   clearInterval(fightTimer);
   cancelWaitingRoom();
 
+  const arena = isArenaUnlocked(room.arenaId) ? getArena(room.arenaId) : currentArena();
+  const pot = Math.round(room.pot * arena.pointBonus);
   const opponent = {
     name: room.host,
-    pot: room.pot,
+    pot,
     difficulty: room.difficulty,
     evasion: room.evasion,
     guard: room.guard,
@@ -724,6 +1015,7 @@ function startFight(room) {
   fight = {
     lastRoom: room,
     opponent,
+    arena,
     playerHp: 100,
     opponentHp: 100,
     energy: 82,
@@ -741,10 +1033,29 @@ function startFight(room) {
     combo: 0,
     event: null,
     eventUntil: 0,
-    log: [`${profile.name} betritt den Ring gegen ${opponent.name}.`],
+    stats: {
+      playerSwings: 0,
+      playerHits: 0,
+      playerMisses: 0,
+      opponentHits: 0,
+      damageDealt: 0,
+      damageTaken: 0,
+      biggestHit: 0,
+      biggestMove: "Jab",
+      maxCombo: 0,
+      blocks: 0,
+      dodges: 0,
+      specials: 0,
+      events: 0,
+    },
+    report: null,
+    log: [`${profile.name} betritt ${arena.name} gegen ${opponent.name}.`],
   };
 
   els.fightResult.hidden = true;
+  els.winnerBanner.textContent = "";
+  els.winnerBanner.classList.remove("is-showing");
+  els.resultReport.innerHTML = "";
   setFightButtonsEnabled(true);
   setScreen("arena");
   renderArena();
@@ -761,10 +1072,12 @@ function fightTick() {
   if (!fight || fight.status !== "active") return;
 
   const now = Date.now();
+  const focusBonus = ["greenhouse", "moonlight"].includes(fight.arena.id) ? 2 : 0;
+  const energyBonus = fight.arena.id === "pumpkin" ? 2 : 0;
   fight.tick += 1;
   fight.round = Math.floor(fight.tick / 18) + 1;
-  fight.energy = clamp(fight.energy + (fight.event?.id === "crowd" ? 9 : 7), 0, 100);
-  fight.focus = clamp(fight.focus + (fight.event?.id === "sun" ? 4 : 1), 0, 100);
+  fight.energy = clamp(fight.energy + (fight.event?.id === "crowd" ? 9 : 7) + energyBonus, 0, 100);
+  fight.focus = clamp(fight.focus + (fight.event?.id === "sun" ? 4 : 1) + focusBonus, 0, 100);
   fight.enemyEnergy = clamp(fight.enemyEnergy + 8, 0, 100);
   fight.enemyFocus = clamp(fight.enemyFocus + 2, 0, 100);
 
@@ -786,9 +1099,12 @@ function fightTick() {
 
 function triggerGardenEvent() {
   if (!fight) return;
-  const event = choice(gardenEvents);
+  const pool = fight.arena?.eventBias?.length ? fight.arena.eventBias : gardenEvents.map((event) => event.id);
+  const eventId = choice(pool);
+  const event = gardenEvents.find((item) => item.id === eventId) || choice(gardenEvents);
   fight.event = event;
   fight.eventUntil = Date.now() + event.duration;
+  fight.stats.events += 1;
   addFightLog(event.log);
   playSfx("event");
 }
@@ -828,6 +1144,8 @@ function playerStrike(kind) {
   }
 
   fight.energy -= move.cost;
+  fight.stats.playerSwings += 1;
+  if (kind === "special") fight.stats.specials += 1;
   fight.combo = kind === "haymaker" ? Math.max(0, fight.combo - 1) : fight.combo + 1;
   if (kind === "special") {
     fight.focus = 0;
@@ -845,6 +1163,7 @@ function playerStrike(kind) {
 
   if (opponentDodged || hitRoll > accuracy) {
     addFightLog(`${fight.opponent.name} lässt ${move.name} durchs Gras rauschen.`);
+    fight.stats.playerMisses += 1;
     fight.combo = 0;
     renderArena();
     return;
@@ -859,6 +1178,13 @@ function playerStrike(kind) {
   }
 
   fight.opponentHp = clamp(fight.opponentHp - damage, 0, 100);
+  fight.stats.playerHits += 1;
+  fight.stats.damageDealt += damage;
+  fight.stats.maxCombo = Math.max(fight.stats.maxCombo, fight.combo);
+  if (damage > fight.stats.biggestHit) {
+    fight.stats.biggestHit = damage;
+    fight.stats.biggestMove = move.name;
+  }
   if (kind === "special") {
     fight.stunnedUntil = Date.now() + 900;
     addFightLog(`Root Rush trifft brutal: -${damage} HP.`);
@@ -887,6 +1213,7 @@ function playerBlock() {
   fight.focus = clamp(fight.focus + 7, 0, 100);
   fight.combo = 0;
   fight.guardUntil = Date.now() + 1250;
+  fight.stats.blocks += 1;
   addFightLog(`${profile.name} zieht die Handschuhe hoch.`);
   flash(els.playerFighter, "is-blocking", 1200);
   playSfx("block");
@@ -895,7 +1222,7 @@ function playerBlock() {
 
 function playerDodge() {
   if (!fight || fight.status !== "active") return;
-  const cost = fight.event?.id === "mud" ? 22 : 15;
+  const cost = fight.event?.id === "mud" || fight.arena.id === "mudpit" ? 22 : 15;
   if (fight.energy < cost) {
     addFightLog("Zu wenig Energie fürs Ausweichen.");
     renderArena();
@@ -905,7 +1232,8 @@ function playerDodge() {
   fight.energy -= cost;
   fight.combo = 0;
   fight.focus = clamp(fight.focus + 5, 0, 100);
-  fight.dodgeUntil = Date.now() + (fight.event?.id === "mud" ? 650 : 900);
+  fight.stats.dodges += 1;
+  fight.dodgeUntil = Date.now() + (fight.event?.id === "mud" || fight.arena.id === "mudpit" ? 650 : 900);
   addFightLog(`${profile.name} slidet am Beet-Rand vorbei.`);
   flash(els.playerFighter, "is-dodging", 860);
   playSfx("dodge");
@@ -982,6 +1310,8 @@ function opponentStrike(kind) {
   }
 
   fight.playerHp = clamp(fight.playerHp - damage, 0, 100);
+  fight.stats.opponentHits += 1;
+  fight.stats.damageTaken += damage;
   addFightLog(`${fight.opponent.name} trifft mit ${move.name}: -${damage} HP.`);
   flash(els.playerFighter, "is-hit");
   showImpact("player");
@@ -992,6 +1322,41 @@ function opponentStrike(kind) {
   }
 }
 
+function buildFightReport(won, pointDelta, unlocks) {
+  const stats = fight.stats;
+  const swings = Math.max(1, stats.playerSwings);
+  const accuracy = Math.round((stats.playerHits / swings) * 100);
+  const combo = Math.max(stats.maxCombo, fight.combo);
+  const defenseBits = [];
+  if (stats.blocks) defenseBits.push(`${stats.blocks} Blocks`);
+  if (stats.dodges) defenseBits.push(`${stats.dodges} Slides`);
+  const defense = defenseBits.length ? defenseBits.join(" und ") : "kein Sicherheitsnetz";
+
+  const highlights = [
+    `${stats.playerHits}/${stats.playerSwings} Treffer (${accuracy}%) und ${stats.damageDealt} Schaden verteilt.`,
+    stats.biggestHit
+      ? `Highlight: ${stats.biggestMove} fuer ${stats.biggestHit} HP, beste Combo x${combo}.`
+      : "Highlight: Viel Schattenboxen, aber die Karotte blieb mutig.",
+    `${fight.arena.name}: ${stats.events} Gartenmoment(e), ${defense}, ${pointDelta} Punkte.`,
+  ];
+
+  if (unlocks.length) {
+    highlights.unshift(`Freigeschaltet: ${unlocks.slice(0, 3).join(" · ")}${unlocks.length > 3 ? " · mehr" : ""}.`);
+  }
+
+  if (!won) {
+    highlights.push(`${fight.opponent.name} landete ${stats.opponentHits} Treffer. Revanche riecht nach frischer Erde.`);
+  }
+
+  return {
+    title: won ? "K.O. im Karottenstil" : "Runde verloren",
+    copy: won
+      ? `+${pointDelta} Punkte. Der Garten hat deinen Namen gehoert.`
+      : `+${pointDelta} Punkte. Deine Karotte ist nicht erledigt, nur kurz geduenstet.`,
+    highlights,
+  };
+}
+
 function endFight(result) {
   if (!fight || fight.status !== "active") return;
 
@@ -1000,6 +1365,7 @@ function endFight(result) {
   setFightButtonsEnabled(false);
 
   const won = result === "win";
+  const previousProfile = { ...profile };
   const styleBonus = Math.round(styleScoreFor(profile) / 18);
   const pointDelta = won
     ? fight.opponent.pot + 18 + fight.round * 3 + styleBonus
@@ -1018,18 +1384,36 @@ function endFight(result) {
     addFightLog(`${fight.opponent.name} gewinnt diese Runde.`);
   }
 
+  const unlocks = newUnlocksBetween(previousProfile, profile);
+  const report = buildFightReport(won, pointDelta, unlocks);
+  fight.report = report;
+  profile.lastReport = report.highlights[0];
   profile.careerLog.unshift(
-    `${won ? "Sieg" : "Niederlage"} gegen ${fight.opponent.name}: +${pointDelta} Punkte`
+    `${won ? "Sieg" : "Niederlage"} gegen ${fight.opponent.name}: +${pointDelta} Punkte · ${fight.arena.shortName}`
   );
+  if (unlocks.length) {
+    profile.careerLog.unshift(`Freigeschaltet: ${unlocks.slice(0, 3).join(" · ")}`);
+  }
   profile.careerLog = profile.careerLog.slice(0, 10);
   saveProfileData();
   renderProfile();
 
-  els.resultTitle.textContent = won ? "K.O. im Karottenstil" : "Runde verloren";
-  els.resultCopy.textContent = won
-    ? `+${pointDelta} Punkte. Der Garten hat deinen Namen gehört.`
-    : `+${pointDelta} Punkte. Deine Karotte ist nicht erledigt, nur kurz gedünstet.`;
+  els.winnerBanner.textContent = won
+    ? `And the winner iiiis... ${profile.name}!`
+    : `And the comeback iiiis... ${profile.name}.`;
+  els.winnerBanner.classList.remove("is-showing");
+  void els.winnerBanner.offsetWidth;
+  els.winnerBanner.classList.add("is-showing");
+  els.resultTitle.textContent = report.title;
+  els.resultCopy.textContent = report.copy;
+  els.resultReport.innerHTML = "";
+  report.highlights.forEach((highlight) => {
+    const item = document.createElement("li");
+    item.textContent = highlight;
+    els.resultReport.append(item);
+  });
   els.fightResult.hidden = false;
+  if (won) playSfx("applause");
   renderArena();
 }
 
@@ -1047,16 +1431,17 @@ function renderArena() {
   const opponentGuardActive = Date.now() < fight.opponentGuardUntil;
   const opponentDodgeActive = Date.now() < fight.opponentDodgeUntil;
 
-  els.arenaTitle.textContent = `${profile.name} vs ${fight.opponent.name}`;
+  els.arenaTitle.textContent = `${fight.arena.name}: ${profile.name} vs ${fight.opponent.name}`;
   els.playerArenaName.textContent = profile.name;
   els.opponentArenaName.textContent = fight.opponent.name;
   els.roundPill.textContent = `Runde ${fight.round}`;
   els.comboPill.textContent = `Combo x${fight.combo}`;
-  els.eventPill.textContent = fight.event ? fight.event.label : "Wind ruhig";
+  els.eventPill.textContent = fight.event ? fight.event.label : fight.arena.shortName;
   els.playerHpBar.style.width = `${fight.playerHp}%`;
   els.opponentHpBar.style.width = `${fight.opponentHp}%`;
   els.energyBar.style.width = `${fight.energy}%`;
   els.focusBar.style.width = `${fight.focus}%`;
+  els.arenaStage.dataset.map = fight.arena.id;
   els.specialButton.disabled = fight.status !== "active" || fight.focus < 100 || fight.energy < 18;
 
   els.playerFighter.innerHTML = carrotSvg(profile, {
@@ -1173,7 +1558,7 @@ function playPercussion(kind) {
       return;
     }
 
-    const length = kind === "snare" ? 0.13 : 0.045;
+    const length = kind === "snare" ? 0.13 : kind === "clap" ? 0.065 : 0.045;
     const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * length)), ctx.sampleRate);
     const channel = buffer.getChannelData(0);
     for (let i = 0; i < channel.length; i += 1) {
@@ -1183,9 +1568,9 @@ function playPercussion(kind) {
     const filter = ctx.createBiquadFilter();
     const gain = ctx.createGain();
     source.buffer = buffer;
-    filter.type = kind === "snare" ? "bandpass" : "highpass";
-    filter.frequency.setValueAtTime(kind === "snare" ? 1700 : 6200, now);
-    gain.gain.setValueAtTime(kind === "snare" ? 0.025 : 0.012, now);
+    filter.type = kind === "snare" || kind === "clap" ? "bandpass" : "highpass";
+    filter.frequency.setValueAtTime(kind === "snare" ? 1700 : kind === "clap" ? 2200 : 6200, now);
+    gain.gain.setValueAtTime(kind === "snare" ? 0.025 : kind === "clap" ? 0.038 : 0.012, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + length);
     source.connect(filter);
     filter.connect(gain);
@@ -1197,7 +1582,26 @@ function playPercussion(kind) {
   }
 }
 
+function playApplause() {
+  for (let i = 0; i < 18; i += 1) {
+    setTimeout(() => {
+      playPercussion("clap");
+      if (i % 5 === 0) {
+        playTone(randomBetween(520, 760), 0.08, "triangle", 0.018);
+      }
+    }, i * 48 + randomBetween(0, 32));
+  }
+  setTimeout(() => {
+    playTone(392, 0.18, "triangle", 0.032);
+    playTone(523, 0.18, "triangle", 0.024);
+  }, 760);
+}
+
 function playSfx(type) {
+  if (type === "applause") {
+    playApplause();
+    return;
+  }
   const map = {
     hit: [142, 0.1, "square", 0.055],
     swing: [230, 0.08, "triangle", 0.038],
@@ -1307,7 +1711,7 @@ els.carrotName.addEventListener("blur", () => {
 ].forEach(([container, property, dataKey]) => {
   container.addEventListener("click", (event) => {
     const button = event.target.closest(`button[data-${dataKey}]`);
-    if (!button) return;
+    if (!button || button.disabled) return;
     profile[property] = button.dataset[dataKey];
     saveProfileData();
     renderProfile();
