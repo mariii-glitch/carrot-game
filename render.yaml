@@ -1,13 +1,13 @@
 services:
   - type: web
-    name: carrot-game
-    runtime: static
-    buildCommand: "true"
-    staticPublishPath: .
+    name: carrot-game-online
+    runtime: node
+    buildCommand: "npm install --omit=dev"
+    startCommand: "npm start"
+    plan: starter
     previews:
       generation: manual
     renderSubdomainPolicy: enabled
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: 22

@@ -1,4 +1,5 @@
 const STORAGE_KEY = "carrot-game-profile-v2";
+const PLAYER_ID_KEY = "carrot-game-player-id-v1";
 
 const capColors = [
   { name: "Garden Blue", value: "#2f7fd1" },
@@ -402,6 +403,9 @@ const els = {
   createRoom: document.querySelector("#createRoom"),
   waitingNotice: document.querySelector("#waitingNotice"),
   waitingText: document.querySelector("#waitingText"),
+  refreshOnlineRooms: document.querySelector("#refreshOnlineRooms"),
+  onlineStatus: document.querySelector("#onlineStatus"),
+  onlineRoomList: document.querySelector("#onlineRoomList"),
   mapStrip: document.querySelector("#mapStrip"),
   yardPreview: document.querySelector("#yardPreview"),
   roomList: document.querySelector("#roomList"),
@@ -445,9 +449,13 @@ const els = {
 };
 
 let profile = loadProfile();
+let playerId = loadPlayerId();
 let fight = null;
 let fightTimer = null;
 let waitingTimer = null;
+let onlineLobbyTimer = null;
+let onlinePollTimer = null;
+let onlineWaitingRoomId = null;
 let activeScreen = "home";
 let audioContext = null;
 let musicTimer = null;
@@ -470,6 +478,20 @@ function loadProfile() {
   }
 }
 
+function loadPlayerId() {
+  try {
+    const existing = localStorage.getItem(PLAYER_ID_KEY);
+    if (existing) return existing;
+    const next =
+      window.crypto?.randomUUID?.() ||
+      `player-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+    localStorage.setItem(PLAYER_ID_KEY, next);
+    return next;
+  } catch {
+    return `player-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+}
+
 function saveProfileData() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
@@ -488,6 +510,51 @@ function randomBetween(min, max) {
 
 function choice(items) {
   return items[randomBetween(0, items.length - 1)];
+}
+
+function onlineProfilePayload() {
+  return {
+    name: profile.name,
+    capColor: profile.capColor,
+    shortsColor: profile.shortsColor,
+    gloveColor: profile.gloveColor,
+    face: profile.face,
+    headwear: profile.headwear,
+    leaves: profile.leaves,
+    pattern: profile.pattern,
+    points: profile.points,
+    rank: rankForPoints(profile.points),
+  };
+}
+
+function onlineArenaPayload() {
+  const arena = currentArena();
+  return {
+    id: arena.id,
+    name: arena.name,
+    shortName: arena.shortName,
+    pointBonus: arena.pointBonus,
+  };
+}
+
+async function apiJson(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Online-Verbindung nicht bereit.");
+  }
+  return data;
+}
+
+function setOnlineStatus(message, mood = "idle") {
+  els.onlineStatus.textContent = message;
+  els.onlineStatus.dataset.mood = mood;
 }
 
 function meetsRequirement(player, requirement) {
@@ -584,18 +651,48 @@ function cleanName(value) {
 function cancelWaitingRoom() {
   clearTimeout(waitingTimer);
   waitingTimer = null;
+  onlineWaitingRoomId = null;
   els.waitingNotice.hidden = true;
   els.createRoom.disabled = false;
 }
 
+function stopOnlinePolling() {
+  clearInterval(onlinePollTimer);
+  onlinePollTimer = null;
+}
+
+function startOnlinePolling() {
+  stopOnlinePolling();
+  onlinePollTimer = setInterval(() => {
+    pollOnlineFight();
+  }, 850);
+}
+
+function stopOnlineLobbyRefresh() {
+  clearInterval(onlineLobbyTimer);
+  onlineLobbyTimer = null;
+}
+
+function startOnlineLobbyRefresh() {
+  stopOnlineLobbyRefresh();
+  refreshOnlineRooms();
+  onlineLobbyTimer = setInterval(() => {
+    if (activeScreen === "lobby") refreshOnlineRooms({ quiet: true });
+  }, 3500);
+}
+
 function setScreen(name) {
-  if (name !== "arena" && fight?.status === "active") {
+  if (name !== "arena" && fight?.online) {
+    stopOnlinePolling();
+    fight = null;
+  } else if (name !== "arena" && fight?.status === "active") {
     clearInterval(fightTimer);
     fight = null;
   }
 
   if (name !== "lobby") {
     cancelWaitingRoom();
+    stopOnlineLobbyRefresh();
   }
 
   activeScreen = name;
@@ -613,6 +710,10 @@ function setScreen(name) {
       button.removeAttribute("aria-current");
     }
   });
+
+  if (name === "lobby") {
+    startOnlineLobbyRefresh();
+  }
 }
 
 function renderSegmented(container, property, attr) {
@@ -954,6 +1055,68 @@ function renderFeaturedFight() {
   els.featuredCopy.textContent = `${arena.shortName}, ${Math.round(featured.pot * arena.pointBonus)} Punkte, ${featured.tactic}.`;
 }
 
+function renderOnlineRooms(onlineRooms = []) {
+  els.onlineRoomList.innerHTML = "";
+  const joinable = onlineRooms.filter((room) => room.status === "waiting" && room.hostId !== playerId);
+  const ownWaiting = onlineRooms.find((room) => room.status === "waiting" && room.hostId === playerId);
+
+  if (ownWaiting) {
+    const card = document.createElement("article");
+    card.className = "online-room-card is-own";
+    card.innerHTML = `
+      <div>
+        <strong>Dein Ring ist offen</strong>
+        <span>${ownWaiting.arena.name} · wartet auf echte Karotte</span>
+      </div>
+      <button class="join-button" type="button" disabled>Wartet...</button>
+    `;
+    els.onlineRoomList.append(card);
+  }
+
+  joinable.forEach((room) => {
+    const host = room.players.find((player) => player.id === room.hostId) || room.players[0];
+    const card = document.createElement("article");
+    card.className = "online-room-card";
+    card.innerHTML = `
+      <div class="online-room-host">${carrotSvg(host?.style || {}, { small: true })}</div>
+      <div>
+        <strong>${host?.name || "Online Carrot"}</strong>
+        <span>${room.arena.name} · ${room.pot} Punkte · ${host?.rank || "Keimling"}</span>
+      </div>
+      <button class="join-button" type="button">Online beitreten</button>
+    `;
+    card.querySelector("button").addEventListener("click", () => joinOnlineRoom(room.id));
+    els.onlineRoomList.append(card);
+  });
+
+  if (!ownWaiting && !joinable.length) {
+    const empty = document.createElement("div");
+    empty.className = "online-empty";
+    empty.textContent = "Noch kein echter Gegner wartet. Eröffne einen Online-Ring oder trainiere unten gegen Gemüse.";
+    els.onlineRoomList.append(empty);
+  }
+}
+
+async function refreshOnlineRooms(options = {}) {
+  try {
+    const data = await apiJson("/api/online/rooms");
+    renderOnlineRooms(data.rooms || []);
+    const waitingCount = (data.rooms || []).filter((room) => room.status === "waiting").length;
+    const activeCount = (data.rooms || []).filter((room) => room.status === "active").length;
+    setOnlineStatus(
+      waitingCount
+        ? `${waitingCount} echter Raum offen · ${activeCount} Fight(s) laufen`
+        : `Keine echten Räume offen · ${activeCount} Fight(s) laufen`,
+      "ready"
+    );
+  } catch (error) {
+    if (!options.quiet) {
+      setOnlineStatus(`${error.message} Bots bleiben als Training bereit.`, "error");
+      renderOnlineRooms([]);
+    }
+  }
+}
+
 function makeRandomOpponent() {
   const cap = choice(capColors).value;
   const shorts = choice(shortsColors).value;
@@ -981,20 +1144,280 @@ function makeRandomOpponent() {
   };
 }
 
-function openRoom() {
-  cancelWaitingRoom();
-  els.waitingNotice.hidden = false;
-  els.waitingText.textContent = "Dein Gartenring ist offen. Ein Gegner kommt gleich.";
-  els.createRoom.disabled = true;
-  waitingTimer = setTimeout(() => {
-    els.waitingText.textContent = "Gegner gefunden.";
-    waitingTimer = setTimeout(() => {
+async function pollOnlineWaitingRoom(roomId) {
+  try {
+    const data = await apiJson(`/api/online/rooms/${roomId}`);
+    if (!data.room) return;
+    if (data.room.status === "active") {
+      onlineWaitingRoomId = null;
       els.waitingNotice.hidden = true;
       els.createRoom.disabled = false;
-      waitingTimer = null;
-      startFight(makeRandomOpponent());
-    }, 500);
-  }, 1250);
+      startOnlineFight(data.room);
+      return;
+    }
+    els.waitingText.textContent = "Online-Ring offen. Warte auf eine echte Karotte...";
+  } catch (error) {
+    setOnlineStatus(error.message, "error");
+    els.waitingText.textContent = "Online-Ring konnte nicht gehalten werden.";
+    els.createRoom.disabled = false;
+    stopOnlinePolling();
+  }
+}
+
+async function openRoom() {
+  cancelWaitingRoom();
+  stopOnlinePolling();
+  els.waitingNotice.hidden = false;
+  els.waitingText.textContent = "Online-Ring wird eröffnet...";
+  els.createRoom.disabled = true;
+
+  try {
+    const data = await apiJson("/api/online/rooms", {
+      method: "POST",
+      body: JSON.stringify({
+        playerId,
+        profile: onlineProfilePayload(),
+        arena: onlineArenaPayload(),
+      }),
+    });
+    onlineWaitingRoomId = data.room.id;
+    setOnlineStatus("Dein Online-Ring ist offen. Schick den Link oder warte in der Lobby.", "ready");
+    els.waitingText.textContent = "Online-Ring offen. Warte auf eine echte Karotte...";
+    renderOnlineRooms([data.room]);
+    onlinePollTimer = setInterval(() => pollOnlineWaitingRoom(data.room.id), 950);
+  } catch (error) {
+    setOnlineStatus(`${error.message} Starte unten weiter Bot-Training.`, "error");
+    els.waitingNotice.hidden = true;
+    els.createRoom.disabled = false;
+  }
+}
+
+async function joinOnlineRoom(roomId) {
+  try {
+    setOnlineStatus("Trete Online-Ring bei...", "ready");
+    const data = await apiJson(`/api/online/rooms/${roomId}/join`, {
+      method: "POST",
+      body: JSON.stringify({
+        playerId,
+        profile: onlineProfilePayload(),
+      }),
+    });
+    startOnlineFight(data.room);
+  } catch (error) {
+    setOnlineStatus(error.message, "error");
+    refreshOnlineRooms({ quiet: true });
+  }
+}
+
+function onlinePlayersFromRoom(room) {
+  const me = room.players.find((player) => player.id === playerId);
+  const opponent = room.players.find((player) => player.id !== playerId);
+  return { me, opponent };
+}
+
+function serverStatsToLocalStats(me, opponent) {
+  return {
+    playerSwings: me?.stats?.swings || 0,
+    playerHits: me?.stats?.hits || 0,
+    playerMisses: me?.stats?.misses || 0,
+    opponentHits: opponent?.stats?.hits || 0,
+    damageDealt: me?.stats?.damageDealt || 0,
+    damageTaken: me?.stats?.damageTaken || 0,
+    biggestHit: me?.stats?.biggestHit || 0,
+    biggestMove: "Online Punch",
+    maxCombo: me?.stats?.maxCombo || 0,
+    blocks: me?.stats?.blocks || 0,
+    dodges: me?.stats?.dodges || 0,
+    specials: me?.stats?.specials || 0,
+    events: 0,
+  };
+}
+
+function startOnlineFight(room) {
+  const { me, opponent } = onlinePlayersFromRoom(room);
+  if (!me || !opponent) return;
+  clearInterval(fightTimer);
+  stopOnlineLobbyRefresh();
+  stopOnlinePolling();
+  onlineWaitingRoomId = null;
+
+  const arena = { ...getArena(room.arena.id), ...room.arena };
+  fight = {
+    online: true,
+    onlineRoomId: room.id,
+    onlineResultApplied: false,
+    lastRoom: null,
+    opponent: {
+      name: opponent.name,
+      pot: room.pot,
+      difficulty: 1,
+      evasion: 0,
+      guard: 0,
+      style: opponent.style,
+    },
+    arena,
+    playerHp: me.hp,
+    opponentHp: opponent.hp,
+    energy: me.energy,
+    focus: me.focus,
+    enemyEnergy: opponent.energy,
+    enemyFocus: opponent.focus,
+    round: room.round || 1,
+    tick: 0,
+    dodgeUntil: me.dodgeUntil || 0,
+    guardUntil: me.guardUntil || 0,
+    opponentDodgeUntil: opponent.dodgeUntil || 0,
+    opponentGuardUntil: opponent.guardUntil || 0,
+    stunnedUntil: 0,
+    status: room.status === "ended" ? "ended" : "active",
+    combo: me.combo || 0,
+    event: null,
+    eventUntil: 0,
+    stats: serverStatsToLocalStats(me, opponent),
+    report: null,
+    log: room.log || [`${profile.name} betritt den Online-Ring.`],
+  };
+
+  els.fightResult.hidden = true;
+  els.winnerBanner.textContent = "";
+  els.winnerBanner.classList.remove("is-showing");
+  els.resultReport.innerHTML = "";
+  setFightButtonsEnabled(fight.status === "active");
+  setScreen("arena");
+  updateOnlineFightFromRoom(room);
+  startOnlinePolling();
+}
+
+function updateOnlineFightFromRoom(room) {
+  if (!fight?.online || fight.onlineRoomId !== room.id) return;
+  const { me, opponent } = onlinePlayersFromRoom(room);
+  if (!me || !opponent) return;
+
+  fight.opponent.name = opponent.name;
+  fight.opponent.style = opponent.style;
+  fight.opponent.pot = room.pot;
+  fight.playerHp = me.hp;
+  fight.opponentHp = opponent.hp;
+  fight.energy = me.energy;
+  fight.focus = me.focus;
+  fight.enemyEnergy = opponent.energy;
+  fight.enemyFocus = opponent.focus;
+  fight.round = room.round || 1;
+  fight.dodgeUntil = me.dodgeUntil || 0;
+  fight.guardUntil = me.guardUntil || 0;
+  fight.opponentDodgeUntil = opponent.dodgeUntil || 0;
+  fight.opponentGuardUntil = opponent.guardUntil || 0;
+  fight.combo = me.combo || 0;
+  fight.status = room.status === "ended" ? "ended" : "active";
+  fight.stats = serverStatsToLocalStats(me, opponent);
+  fight.log = room.log || fight.log;
+  setFightButtonsEnabled(fight.status === "active");
+  renderArena();
+
+  if (room.status === "ended") {
+    stopOnlinePolling();
+    applyOnlineResult(room);
+  }
+}
+
+async function pollOnlineFight() {
+  if (!fight?.online) return;
+  try {
+    const data = await apiJson(`/api/online/rooms/${fight.onlineRoomId}`);
+    updateOnlineFightFromRoom(data.room);
+  } catch (error) {
+    addFightLog(`Online-Verbindung wackelt: ${error.message}`);
+    renderArena();
+  }
+}
+
+function applyOnlineResult(room) {
+  if (!fight?.online || fight.onlineResultApplied || !room.result) return;
+  fight.onlineResultApplied = true;
+
+  const won = room.result.winnerId === playerId;
+  const previousProfile = { ...profile };
+  const pointDelta = room.result.pointDeltas?.[playerId] || 0;
+  profile.fights += 1;
+  profile.points += pointDelta;
+  if (won) {
+    profile.wins += 1;
+    profile.streak += 1;
+    profile.bestStreak = Math.max(profile.bestStreak, profile.streak);
+  } else {
+    profile.losses += 1;
+    profile.streak = 0;
+  }
+
+  const unlocks = newUnlocksBetween(previousProfile, profile);
+  const highlights = [...(room.result.reports?.[playerId] || [])];
+  if (unlocks.length) {
+    highlights.unshift(`Freigeschaltet: ${unlocks.slice(0, 3).join(" · ")}.`);
+  }
+  profile.careerLog.unshift(
+    `${won ? "Online-Sieg" : "Online-Niederlage"} gegen ${fight.opponent.name}: +${pointDelta} Punkte`
+  );
+  profile.careerLog = profile.careerLog.slice(0, 10);
+  saveProfileData();
+  renderProfile();
+
+  els.winnerBanner.textContent = won
+    ? `And the online winner iiiis... ${profile.name}!`
+    : `And the online winner iiiis... ${room.result.winnerName}!`;
+  els.winnerBanner.classList.remove("is-showing");
+  void els.winnerBanner.offsetWidth;
+  els.winnerBanner.classList.add("is-showing");
+  els.resultTitle.textContent = won ? "Online K.O.!" : "Online-Runde verloren";
+  els.resultCopy.textContent = won
+    ? `+${pointDelta} Punkte gegen einen echten Spieler. Starkes Beet.`
+    : `+${pointDelta} Punkte. Revanche gegen echte Karotten schmeckt besser.`;
+  els.resultReport.innerHTML = "";
+  highlights.forEach((highlight) => {
+    const item = document.createElement("li");
+    item.textContent = highlight;
+    els.resultReport.append(item);
+  });
+  els.fightResult.hidden = false;
+  if (won) playSfx("applause");
+}
+
+async function sendOnlineAction(type) {
+  if (!fight?.online || fight.status !== "active") return;
+  try {
+    playSfx(type === "special" ? "special" : type === "block" ? "block" : type === "dodge" ? "dodge" : "swing");
+    const data = await apiJson(`/api/online/rooms/${fight.onlineRoomId}/action`, {
+      method: "POST",
+      body: JSON.stringify({ playerId, type }),
+    });
+    updateOnlineFightFromRoom(data.room);
+  } catch (error) {
+    addFightLog(`Online-Aktion fehlgeschlagen: ${error.message}`);
+    renderArena();
+  }
+}
+
+function handleStrike(kind) {
+  if (fight?.online) {
+    sendOnlineAction(kind);
+    return;
+  }
+  playerStrike(kind);
+}
+
+function handleBlock() {
+  if (fight?.online) {
+    sendOnlineAction("block");
+    return;
+  }
+  playerBlock();
+}
+
+function handleDodge() {
+  if (fight?.online) {
+    sendOnlineAction("dodge");
+    return;
+  }
+  playerDodge();
 }
 
 function startFight(room) {
@@ -1064,6 +1487,7 @@ function startFight(room) {
 
 function closeArena() {
   clearInterval(fightTimer);
+  stopOnlinePolling();
   fight = null;
   setScreen("lobby");
 }
@@ -1436,7 +1860,7 @@ function renderArena() {
   els.opponentArenaName.textContent = fight.opponent.name;
   els.roundPill.textContent = `Runde ${fight.round}`;
   els.comboPill.textContent = `Combo x${fight.combo}`;
-  els.eventPill.textContent = fight.event ? fight.event.label : fight.arena.shortName;
+  els.eventPill.textContent = fight.online ? "Online live" : fight.event ? fight.event.label : fight.arena.shortName;
   els.playerHpBar.style.width = `${fight.playerHp}%`;
   els.opponentHpBar.style.width = `${fight.opponentHp}%`;
   els.energyBar.style.width = `${fight.energy}%`;
@@ -1731,40 +2155,45 @@ els.saveProfile.addEventListener("click", () => {
 });
 
 els.createRoom.addEventListener("click", openRoom);
+els.refreshOnlineRooms.addEventListener("click", () => refreshOnlineRooms());
 els.leaveArena.addEventListener("click", closeArena);
 els.backToLobby.addEventListener("click", closeArena);
 els.rematchButton.addEventListener("click", () => {
   const room = fight?.lastRoom || rooms[0];
+  if (fight?.online) {
+    closeArena();
+    return;
+  }
   startFight(room);
 });
-els.jabButton.addEventListener("click", () => playerStrike("jab"));
-els.haymakerButton.addEventListener("click", () => playerStrike("haymaker"));
-els.blockButton.addEventListener("click", playerBlock);
-els.dodgeButton.addEventListener("click", playerDodge);
-els.specialButton.addEventListener("click", () => playerStrike("special"));
+els.jabButton.addEventListener("click", () => handleStrike("jab"));
+els.haymakerButton.addEventListener("click", () => handleStrike("haymaker"));
+els.blockButton.addEventListener("click", handleBlock);
+els.dodgeButton.addEventListener("click", handleDodge);
+els.specialButton.addEventListener("click", () => handleStrike("special"));
 
 document.addEventListener("keydown", (event) => {
   if (!fight || activeScreen !== "arena") return;
   const key = event.key.toLowerCase();
   if (event.code === "Space" || key === "j") {
     event.preventDefault();
-    playerStrike("jab");
+    handleStrike("jab");
   }
   if (key === "h") {
     event.preventDefault();
-    playerStrike("haymaker");
+    handleStrike("haymaker");
   }
   if (key === "b") {
     event.preventDefault();
-    playerBlock();
+    handleBlock();
   }
   if (key === "a" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
     event.preventDefault();
-    playerDodge();
+    handleDodge();
   }
   if (key === "s") {
     event.preventDefault();
-    playerStrike("special");
+    handleStrike("special");
   }
 });
 

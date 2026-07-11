@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Carrot Game</title>
-    <link rel="stylesheet" href="styles.css?v=polish9" />
+    <link rel="stylesheet" href="styles.css?v=online1" />
   </head>
   <body>
     <div class="garden-sky" aria-hidden="true">
@@ -188,10 +188,21 @@
               <span class="eyebrow">Lobby</span>
               <h1>Offene Gartenringe</h1>
             </div>
-            <button id="createRoom" class="secondary-button compact" type="button">Eigenen Ring eröffnen</button>
+            <button id="createRoom" class="secondary-button compact" type="button">Online-Ring eröffnen</button>
           </div>
 
           <div id="mapStrip" class="map-strip" aria-label="Freischaltbare Maps"></div>
+
+          <section class="online-panel" aria-label="Online Lobby">
+            <div class="online-panel-head">
+              <div>
+                <span class="eyebrow">Online Garden</span>
+                <strong id="onlineStatus">Suche echte Gegner im Garten...</strong>
+              </div>
+              <button id="refreshOnlineRooms" class="secondary-button compact" type="button">Aktualisieren</button>
+            </div>
+            <div id="onlineRoomList" class="online-room-list"></div>
+          </section>
 
           <div class="lobby-layout">
             <div id="yardPreview" class="yard-preview" aria-hidden="true">
@@ -347,6 +358,6 @@
       </nav>
     </div>
 
-    <script src="app.js?v=polish9"></script>
+    <script src="app.js?v=online1"></script>
   </body>
 </html>

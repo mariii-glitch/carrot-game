@@ -1052,7 +1052,7 @@ p {
 }
 
 .screen-lobby {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
 }
 
 .map-strip {
@@ -1110,6 +1110,101 @@ p {
   cursor: not-allowed;
   filter: grayscale(0.35);
   opacity: 0.68;
+}
+
+.online-panel {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 253, 246, 0.94), rgba(226, 246, 255, 0.72)),
+    var(--paper);
+  box-shadow: var(--tight-shadow);
+}
+
+.online-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.online-panel-head strong {
+  display: block;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.online-panel-head strong[data-mood="ready"] {
+  color: var(--grass-deep);
+}
+
+.online-panel-head strong[data-mood="error"] {
+  color: var(--tomato);
+}
+
+.online-room-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 52px;
+}
+
+.online-room-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(42, 71, 38, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.online-room-card.is-own {
+  grid-template-columns: minmax(0, 1fr) auto;
+  background: rgba(255, 200, 87, 0.2);
+}
+
+.online-room-card strong,
+.online-room-card span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-room-card span,
+.online-empty {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.online-room-host {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(60, 156, 87, 0.12);
+}
+
+.online-room-host .carrot-avatar.small {
+  width: 56px;
+}
+
+.online-empty {
+  grid-column: 1 / -1;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.52);
 }
 
 .lobby-layout {
@@ -2338,6 +2433,10 @@ p {
     padding-bottom: 2px;
   }
 
+  .online-room-list {
+    grid-template-columns: 1fr;
+  }
+
   .career-layout {
     grid-template-areas:
       "stats"
@@ -2628,6 +2727,11 @@ p {
 
   .yard-preview {
     min-height: 238px;
+  }
+
+  .online-panel-head {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .arena-shell {
