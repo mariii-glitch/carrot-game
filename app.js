@@ -462,6 +462,48 @@ let musicTimer = null;
 let bassTimer = null;
 let musicStep = 0;
 let musicEnabled = false;
+let onlineActionLockedUntil = 0;
+
+const onlineActionCooldowns = {
+  jab: 380,
+  haymaker: 780,
+  block: 540,
+  dodge: 660,
+  special: 960,
+};
+
+function installTouchZoomGuards() {
+  let lastTouchEnd = 0;
+  document.addEventListener(
+    "touchend",
+    (event) => {
+      const now = Date.now();
+      if (now - lastTouchEnd < 320) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    },
+    { passive: false }
+  );
+  ["gesturestart", "gesturechange", "gestureend"].forEach((type) => {
+    document.addEventListener(
+      type,
+      (event) => {
+        event.preventDefault();
+      },
+      { passive: false }
+    );
+  });
+  document.addEventListener(
+    "wheel",
+    (event) => {
+      if (event.ctrlKey) {
+        event.preventDefault();
+      }
+    },
+    { passive: false }
+  );
+}
 
 function loadProfile() {
   try {
@@ -665,7 +707,7 @@ function startOnlinePolling() {
   stopOnlinePolling();
   onlinePollTimer = setInterval(() => {
     pollOnlineFight();
-  }, 850);
+  }, 650);
 }
 
 function stopOnlineLobbyRefresh() {
@@ -1240,6 +1282,7 @@ function startOnlineFight(room) {
   stopOnlineLobbyRefresh();
   stopOnlinePolling();
   onlineWaitingRoomId = null;
+  onlineActionLockedUntil = 0;
 
   const arena = { ...getArena(room.arena.id), ...room.arena };
   fight = {
@@ -1282,6 +1325,7 @@ function startOnlineFight(room) {
   els.winnerBanner.textContent = "";
   els.winnerBanner.classList.remove("is-showing");
   els.resultReport.innerHTML = "";
+  els.rematchButton.textContent = "Neue Online-Lobby";
   setFightButtonsEnabled(fight.status === "active");
   setScreen("arena");
   updateOnlineFightFromRoom(room);
@@ -1311,6 +1355,7 @@ function updateOnlineFightFromRoom(room) {
   fight.status = room.status === "ended" ? "ended" : "active";
   fight.stats = serverStatsToLocalStats(me, opponent);
   fight.log = room.log || fight.log;
+  fight.lastRoom = room;
   setFightButtonsEnabled(fight.status === "active");
   renderArena();
 
@@ -1333,7 +1378,12 @@ async function pollOnlineFight() {
 
 function applyOnlineResult(room) {
   if (!fight?.online || fight.onlineResultApplied || !room.result) return;
+  stopOnlinePolling();
   fight.onlineResultApplied = true;
+  fight.status = "ended";
+  fight.lastRoom = room;
+  onlineActionLockedUntil = 0;
+  setFightButtonsEnabled(false);
 
   const won = room.result.winnerId === playerId;
   const previousProfile = { ...profile };
@@ -1360,6 +1410,7 @@ function applyOnlineResult(room) {
   profile.careerLog = profile.careerLog.slice(0, 10);
   saveProfileData();
   renderProfile();
+  els.rematchButton.textContent = "Neue Online-Lobby";
 
   els.winnerBanner.textContent = won
     ? `And the online winner iiiis... ${profile.name}!`
@@ -1379,10 +1430,37 @@ function applyOnlineResult(room) {
   });
   els.fightResult.hidden = false;
   if (won) playSfx("applause");
+  renderArena();
 }
 
 async function sendOnlineAction(type) {
   if (!fight?.online || fight.status !== "active") return;
+  const now = Date.now();
+  if (now < onlineActionLockedUntil) return;
+
+  const cooldown = onlineActionCooldowns[type] || 420;
+  onlineActionLockedUntil = now + cooldown;
+  setFightButtonsEnabled(false);
+
+  const localFlash =
+    type === "block"
+      ? ["is-blocking", 540]
+      : type === "dodge"
+        ? ["is-dodging", 660]
+        : type === "special"
+          ? ["is-special", 540]
+          : type === "haymaker"
+            ? ["is-haymaker", 330]
+            : ["is-punching", 280];
+  flash(els.playerFighter, localFlash[0], localFlash[1]);
+
+  window.setTimeout(() => {
+    if (fight?.online && fight.status === "active") {
+      setFightButtonsEnabled(true);
+      renderArena();
+    }
+  }, cooldown + 20);
+
   try {
     playSfx(type === "special" ? "special" : type === "block" ? "block" : type === "dodge" ? "dodge" : "swing");
     const data = await apiJson(`/api/online/rooms/${fight.onlineRoomId}/action`, {
@@ -1391,6 +1469,8 @@ async function sendOnlineAction(type) {
     });
     updateOnlineFightFromRoom(data.room);
   } catch (error) {
+    onlineActionLockedUntil = 0;
+    setFightButtonsEnabled(fight?.status === "active");
     addFightLog(`Online-Aktion fehlgeschlagen: ${error.message}`);
     renderArena();
   }
@@ -1423,6 +1503,7 @@ function handleDodge() {
 function startFight(room) {
   clearInterval(fightTimer);
   cancelWaitingRoom();
+  onlineActionLockedUntil = 0;
 
   const arena = isArenaUnlocked(room.arenaId) ? getArena(room.arenaId) : currentArena();
   const pot = Math.round(room.pot * arena.pointBonus);
@@ -1479,6 +1560,7 @@ function startFight(room) {
   els.winnerBanner.textContent = "";
   els.winnerBanner.classList.remove("is-showing");
   els.resultReport.innerHTML = "";
+  els.rematchButton.textContent = "Revanche";
   setFightButtonsEnabled(true);
   setScreen("arena");
   renderArena();
@@ -1488,6 +1570,8 @@ function startFight(room) {
 function closeArena() {
   clearInterval(fightTimer);
   stopOnlinePolling();
+  onlineActionLockedUntil = 0;
+  els.rematchButton.textContent = "Revanche";
   fight = null;
   setScreen("lobby");
 }
@@ -1842,9 +1926,16 @@ function endFight(result) {
 }
 
 function setFightButtonsEnabled(enabled) {
-  [els.jabButton, els.haymakerButton, els.blockButton, els.dodgeButton, els.specialButton].forEach((button) => {
-    button.disabled = !enabled;
+  const cooling = Boolean(fight?.online && fight.status === "active" && Date.now() < onlineActionLockedUntil);
+  const canUse = Boolean(enabled && !cooling);
+  [els.jabButton, els.haymakerButton, els.blockButton, els.dodgeButton].forEach((button) => {
+    button.disabled = !canUse;
+    button.classList.toggle("is-cooling", cooling);
   });
+
+  const specialReady = Boolean(fight && fight.status === "active" && fight.focus >= 100 && fight.energy >= 18);
+  els.specialButton.disabled = !canUse || !specialReady;
+  els.specialButton.classList.toggle("is-cooling", cooling);
 }
 
 function renderArena() {
@@ -1866,7 +1957,7 @@ function renderArena() {
   els.energyBar.style.width = `${fight.energy}%`;
   els.focusBar.style.width = `${fight.focus}%`;
   els.arenaStage.dataset.map = fight.arena.id;
-  els.specialButton.disabled = fight.status !== "active" || fight.focus < 100 || fight.energy < 18;
+  setFightButtonsEnabled(fight.status === "active");
 
   els.playerFighter.innerHTML = carrotSvg(profile, {
     arena: true,
@@ -2197,6 +2288,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+installTouchZoomGuards();
 renderFeaturedFight();
 renderPresets();
 renderRooms();

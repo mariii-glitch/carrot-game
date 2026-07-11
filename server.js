@@ -7,6 +7,7 @@ const PORT = Number(process.env.PORT || 8100);
 const HOST = process.env.HOST || "0.0.0.0";
 const PUBLIC_DIR = __dirname;
 const ROOM_TTL = 30 * 60 * 1000;
+const SERVER_TICK_MS = 650;
 
 const rooms = new Map();
 
@@ -113,6 +114,7 @@ function makePlayer(playerId, profile, role) {
     combo: 0,
     guardUntil: 0,
     dodgeUntil: 0,
+    actionCooldownUntil: 0,
     stats: {
       swings: 0,
       hits: 0,
@@ -150,6 +152,7 @@ function publicRoom(room) {
       combo: player.combo,
       guardUntil: player.guardUntil,
       dodgeUntil: player.dodgeUntil,
+      actionCooldownUntil: player.actionCooldownUntil,
       stats: player.stats,
     })),
     log: room.log.slice(0, 10),
@@ -170,13 +173,13 @@ function cleanRooms() {
 function advanceRoom(room) {
   if (room.status !== "active") return;
   const now = Date.now();
-  const ticks = Math.min(10, Math.floor((now - room.lastTick) / 850));
+  const ticks = Math.min(12, Math.floor((now - room.lastTick) / SERVER_TICK_MS));
   if (ticks <= 0) return;
-  room.lastTick += ticks * 850;
-  room.round = Math.floor((now - room.startedAt) / 16000) + 1;
+  room.lastTick += ticks * SERVER_TICK_MS;
+  room.round = Math.floor((now - room.startedAt) / 14500) + 1;
   Object.values(room.players).forEach((player) => {
-    player.energy = clamp(player.energy + ticks * 6, 0, 100);
-    player.focus = clamp(player.focus + ticks * (room.arena.id === "greenhouse" ? 3 : 1), 0, 100);
+    player.energy = clamp(player.energy + ticks * (room.arena.id === "pumpkin" ? 7 : 5), 0, 100);
+    player.focus = clamp(player.focus + ticks * (room.arena.id === "greenhouse" ? 3 : 1.4), 0, 100);
   });
   if (now - room.lastEventAt > 10500) {
     room.lastEventAt = now;
@@ -187,6 +190,7 @@ function advanceRoom(room) {
 }
 
 function finishRoom(room, winnerId) {
+  if (room.status === "ended" || room.result) return;
   const loserId = Object.keys(room.players).find((id) => id !== winnerId);
   const winner = room.players[winnerId];
   const loser = loserId ? room.players[loserId] : null;
@@ -233,20 +237,28 @@ function applyAction(room, playerId, type) {
 
   const now = Date.now();
   const moves = {
-    jab: { name: "Jab", cost: 10, min: 7, max: 13, accuracy: 0.9, focus: 9 },
-    haymaker: { name: "Haymaker", cost: 26, min: 18, max: 28, accuracy: 0.68, focus: 15 },
-    special: { name: "Root Rush", cost: 20, min: 32, max: 45, accuracy: 0.95, focus: 0 },
+    jab: { name: "Jab", cost: 10, min: 8, max: 13, accuracy: 0.92, focus: 8, cooldown: 380 },
+    haymaker: { name: "Haymaker", cost: 28, min: 19, max: 30, accuracy: 0.7, focus: 15, cooldown: 780 },
+    special: { name: "Root Rush", cost: 20, min: 34, max: 46, accuracy: 0.96, focus: 0, cooldown: 960 },
   };
+
+  if (now < player.actionCooldownUntil) {
+    room.updatedAt = now;
+    return;
+  }
 
   if (type === "block") {
     if (player.energy < 8) {
       room.log.unshift(`${player.name} hat zu wenig Energie fürs Blocken.`);
+      player.actionCooldownUntil = now + 260;
+      room.updatedAt = now;
       return;
     }
     player.energy -= 8;
     player.focus = clamp(player.focus + 7, 0, 100);
     player.combo = 0;
     player.guardUntil = now + 1250;
+    player.actionCooldownUntil = now + 540;
     player.stats.blocks += 1;
     room.log.unshift(`${player.name} macht die Gartenmauer dicht.`);
     room.updatedAt = now;
@@ -256,12 +268,15 @@ function applyAction(room, playerId, type) {
   if (type === "dodge") {
     if (player.energy < 15) {
       room.log.unshift(`${player.name} klebt kurz im Beet fest.`);
+      player.actionCooldownUntil = now + 260;
+      room.updatedAt = now;
       return;
     }
     player.energy -= 15;
     player.focus = clamp(player.focus + 5, 0, 100);
     player.combo = 0;
     player.dodgeUntil = now + 880;
+    player.actionCooldownUntil = now + 660;
     player.stats.dodges += 1;
     room.log.unshift(`${player.name} slidet online am Seil vorbei.`);
     room.updatedAt = now;
@@ -272,14 +287,19 @@ function applyAction(room, playerId, type) {
   if (!move) return;
   if (type === "special" && player.focus < 100) {
     room.log.unshift(`${player.name} will Root Rush, aber der Fokus fehlt.`);
+    player.actionCooldownUntil = now + 260;
+    room.updatedAt = now;
     return;
   }
   if (player.energy < move.cost) {
     room.log.unshift(`${player.name} braucht online kurz Luft.`);
+    player.actionCooldownUntil = now + 260;
+    room.updatedAt = now;
     return;
   }
 
   player.energy -= move.cost;
+  player.actionCooldownUntil = now + move.cooldown;
   player.stats.swings += 1;
   player.combo = type === "haymaker" ? Math.max(0, player.combo - 1) : player.combo + 1;
   if (type === "special") {
@@ -315,6 +335,7 @@ function applyAction(room, playerId, type) {
 
   if (target.hp <= 0) {
     finishRoom(room, playerId);
+    return;
   }
 }
 
