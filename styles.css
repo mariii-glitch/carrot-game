@@ -2813,7 +2813,7 @@ p {
   }
 
   .arena-shell {
-    grid-template-rows: auto auto minmax(150px, 1fr) auto auto;
+    grid-template-rows: auto auto minmax(250px, 1fr) auto;
   }
 
   .arena-shell.is-finished {
@@ -2838,7 +2838,7 @@ p {
   .arena-topline,
   .health-row,
   .arena-controls {
-    padding: 10px;
+    padding: 9px 10px;
   }
 
   .arena-topline {
@@ -2849,8 +2849,12 @@ p {
   }
 
   .arena-topline h1 {
-    font-size: clamp(1rem, 4.8vw, 1.35rem);
-    line-height: 1.02;
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: clamp(0.92rem, 4.2vw, 1.14rem);
+    line-height: 1;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .arena-actions {
@@ -2890,8 +2894,49 @@ p {
     opacity: 0.72;
   }
 
+  .arena-stage {
+    min-height: 250px;
+  }
+
   .boxing-field {
-    width: 86%;
+    top: 48%;
+    width: min(86%, 390px);
+    border-width: 7px;
+    box-shadow:
+      0 18px 0 #9c6b3b,
+      0 26px 28px rgba(19, 58, 26, 0.24);
+  }
+
+  .arena-stage[data-map="greenhouse"] .boxing-field {
+    box-shadow:
+      0 18px 0 #69a05c,
+      0 26px 28px rgba(19, 58, 26, 0.22);
+  }
+
+  .arena-stage[data-map="mudpit"] .boxing-field {
+    box-shadow:
+      0 18px 0 #765136,
+      0 26px 28px rgba(19, 58, 26, 0.26);
+  }
+
+  .arena-stage[data-map="moonlight"] .boxing-field {
+    box-shadow:
+      0 18px 0 #355064,
+      0 26px 28px rgba(8, 25, 34, 0.3);
+  }
+
+  .arena-stage[data-map="pumpkin"] .boxing-field {
+    box-shadow:
+      0 18px 0 #9a5d2a,
+      0 26px 28px rgba(79, 41, 13, 0.28);
+  }
+
+  .fighter {
+    will-change: left, filter, transform;
+  }
+
+  .carrot-avatar.arena-size {
+    width: clamp(96px, 28vw, 132px);
   }
 
   .ringside-sign {
@@ -2919,9 +2964,20 @@ p {
   }
 
   .fight-log {
-    grid-template-columns: 1fr;
-    max-height: 66px;
-    padding: 0 10px 8px;
+    display: none;
+  }
+
+  body[data-screen="arena"] .cloud,
+  body[data-screen="arena"] .wind,
+  body[data-screen="arena"] .leaf,
+  body[data-screen="arena"] .bird,
+  body[data-screen="arena"] .mouse-runner {
+    animation: none;
+  }
+
+  body[data-screen="arena"] .bird,
+  body[data-screen="arena"] .mouse-runner {
+    display: none;
   }
 
   .mobile-nav {

@@ -769,6 +769,7 @@ function setScreen(name) {
   }
 
   activeScreen = name;
+  document.body.dataset.screen = name;
   els.screens.forEach((screen) => {
     const isActive = screen.dataset.screen === name;
     screen.hidden = !isActive;
@@ -1983,6 +1984,27 @@ function setFightButtonsEnabled(enabled) {
   els.specialButton.classList.toggle("is-cooling", cooling);
 }
 
+function fighterSvgKey(style, options) {
+  return [
+    style.headwear,
+    style.leaves,
+    style.pattern,
+    style.capColor,
+    style.shortsColor,
+    style.gloveColor,
+    style.face,
+    options.pose || "idle",
+    options.mirror ? "mirror" : "plain",
+  ].join("|");
+}
+
+function renderFighter(node, style, options) {
+  const key = fighterSvgKey(style, options);
+  if (node.dataset.svgKey === key) return;
+  node.innerHTML = carrotSvg(style, options);
+  node.dataset.svgKey = key;
+}
+
 function renderArena() {
   if (!fight) return;
 
@@ -2004,11 +2026,11 @@ function renderArena() {
   els.arenaStage.dataset.map = fight.arena.id;
   setFightButtonsEnabled(fight.status === "active");
 
-  els.playerFighter.innerHTML = carrotSvg(profile, {
+  renderFighter(els.playerFighter, profile, {
     arena: true,
     pose: guardActive ? "block" : "idle",
   });
-  els.opponentFighter.innerHTML = carrotSvg(fight.opponent.style, {
+  renderFighter(els.opponentFighter, fight.opponent.style, {
     arena: true,
     mirror: true,
     pose: opponentGuardActive ? "block" : "idle",
@@ -2018,12 +2040,16 @@ function renderArena() {
   els.opponentFighter.style.left = opponentDodgeActive ? "75%" : opponentGuardActive ? "71%" : "68%";
   els.arenaStage.classList.toggle("event-wind", fight.event?.id === "wind");
 
-  els.fightLog.innerHTML = "";
-  fight.log.forEach((entry) => {
-    const item = document.createElement("li");
-    item.textContent = entry;
-    els.fightLog.append(item);
-  });
+  const logKey = fight.log.join("\n");
+  if (els.fightLog.dataset.logKey !== logKey) {
+    els.fightLog.dataset.logKey = logKey;
+    els.fightLog.innerHTML = "";
+    fight.log.forEach((entry) => {
+      const item = document.createElement("li");
+      item.textContent = entry;
+      els.fightLog.append(item);
+    });
+  }
 }
 
 function flash(node, className, duration = 260) {
