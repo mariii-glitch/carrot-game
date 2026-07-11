@@ -2549,13 +2549,39 @@ p {
   }
 
   .hero-fighter-panel {
-    min-height: 250px;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 280px;
+    padding: 12px;
   }
 
   .hero-carrot {
+    align-self: center;
     width: min(48%, 210px);
     height: min(58%, 190px);
+    margin-bottom: 14px;
     max-height: 190px;
+  }
+
+  .hero-tags {
+    position: relative;
+    z-index: 4;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    align-self: end;
+    width: 100%;
+    margin-top: 12px;
+    transform: translateY(10px);
+  }
+
+  .hero-tags span {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 0;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
 
   .screen-home,
