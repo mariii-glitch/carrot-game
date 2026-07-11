@@ -2614,6 +2614,15 @@ p {
     overflow: auto;
   }
 
+  .screen-lobby {
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .screen-lobby .lobby-layout,
+  .screen-lobby .room-grid {
+    min-height: max-content;
+  }
+
   .screen-locker {
     overflow: hidden;
   }
@@ -2806,6 +2815,25 @@ p {
     grid-template-rows: auto auto minmax(150px, 1fr) auto auto;
   }
 
+  .arena-shell.is-finished {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .arena-shell.is-finished .health-row,
+  .arena-shell.is-finished .arena-stage,
+  .arena-shell.is-finished .arena-controls,
+  .arena-shell.is-finished .fight-log {
+    display: none;
+  }
+
+  .arena-shell.is-finished .fight-result {
+    align-self: center;
+    width: calc(100% - 20px);
+    max-height: calc(100% - 20px);
+    margin: 10px auto;
+    overflow: auto;
+  }
+
   .arena-topline,
   .health-row,
   .arena-controls {
@@ -2952,12 +2980,28 @@ p {
   }
 
   .room-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: 78px minmax(0, 1fr);
+    align-items: center;
+    min-height: 122px;
   }
 
   .room-avatar {
-    width: 100%;
-    height: 118px;
+    width: 78px;
+    height: 96px;
+  }
+
+  .room-copy {
+    display: grid;
+    gap: 8px;
+  }
+
+  .room-copy h2,
+  .room-meta {
+    margin-bottom: 0;
+  }
+
+  .room-meta {
+    gap: 4px;
   }
 
   .fight-button {

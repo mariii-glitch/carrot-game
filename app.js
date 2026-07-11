@@ -420,6 +420,7 @@ const els = {
   badgeList: document.querySelector("#badgeList"),
   careerLog: document.querySelector("#careerLog"),
   arenaTitle: document.querySelector("#arenaTitle"),
+  arenaShell: document.querySelector(".arena-shell"),
   leaveArena: document.querySelector("#leaveArena"),
   playerArenaName: document.querySelector("#playerArenaName"),
   opponentArenaName: document.querySelector("#opponentArenaName"),
@@ -1359,11 +1360,7 @@ function startOnlineFight(room) {
     log: room.log || [`${profile.name} betritt den Online-Ring.`],
   };
 
-  els.fightResult.hidden = true;
-  els.winnerBanner.textContent = "";
-  els.winnerBanner.classList.remove("is-showing");
-  els.resultReport.innerHTML = "";
-  els.rematchButton.textContent = "Neue Online-Lobby";
+  resetFightResultState("Neue Online-Lobby");
   setFightButtonsEnabled(fight.status === "active");
   setScreen("arena");
   updateOnlineFightFromRoom(room);
@@ -1412,6 +1409,20 @@ async function pollOnlineFight() {
     addFightLog(`Online-Verbindung wackelt: ${error.message}`);
     renderArena();
   }
+}
+
+function resetFightResultState(rematchLabel = "Revanche") {
+  els.arenaShell.classList.remove("is-finished");
+  els.fightResult.hidden = true;
+  els.winnerBanner.textContent = "";
+  els.winnerBanner.classList.remove("is-showing");
+  els.resultReport.innerHTML = "";
+  els.rematchButton.textContent = rematchLabel;
+}
+
+function showFightResult() {
+  els.arenaShell.classList.add("is-finished");
+  els.fightResult.hidden = false;
 }
 
 function applyOnlineResult(room) {
@@ -1466,7 +1477,7 @@ function applyOnlineResult(room) {
     item.textContent = highlight;
     els.resultReport.append(item);
   });
-  els.fightResult.hidden = false;
+  showFightResult();
   if (won) playSfx("applause");
   renderArena();
 }
@@ -1594,11 +1605,7 @@ function startFight(room) {
     log: [`${profile.name} betritt ${arena.name} gegen ${opponent.name}.`],
   };
 
-  els.fightResult.hidden = true;
-  els.winnerBanner.textContent = "";
-  els.winnerBanner.classList.remove("is-showing");
-  els.resultReport.innerHTML = "";
-  els.rematchButton.textContent = "Revanche";
+  resetFightResultState("Revanche");
   setFightButtonsEnabled(true);
   setScreen("arena");
   renderArena();
@@ -1609,7 +1616,7 @@ function closeArena() {
   clearInterval(fightTimer);
   stopOnlinePolling();
   onlineActionLockedUntil = 0;
-  els.rematchButton.textContent = "Revanche";
+  resetFightResultState("Revanche");
   fight = null;
   setScreen("lobby");
 }
@@ -1958,7 +1965,7 @@ function endFight(result) {
     item.textContent = highlight;
     els.resultReport.append(item);
   });
-  els.fightResult.hidden = false;
+  showFightResult();
   if (won) playSfx("applause");
   renderArena();
 }
