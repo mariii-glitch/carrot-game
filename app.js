@@ -1,5 +1,6 @@
 const STORAGE_KEY = "carrot-game-profile-v2";
-const PLAYER_ID_KEY = "carrot-game-player-id-v1";
+const PLAYER_ID_KEY = "carrot-game-tab-player-id-v2";
+const ROOM_PARAM = "room";
 
 const capColors = [
   { name: "Garden Blue", value: "#2f7fd1" },
@@ -522,15 +523,44 @@ function loadProfile() {
 
 function loadPlayerId() {
   try {
-    const existing = localStorage.getItem(PLAYER_ID_KEY);
+    const existing = sessionStorage.getItem(PLAYER_ID_KEY);
     if (existing) return existing;
     const next =
       window.crypto?.randomUUID?.() ||
       `player-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
-    localStorage.setItem(PLAYER_ID_KEY, next);
+    sessionStorage.setItem(PLAYER_ID_KEY, next);
     return next;
   } catch {
     return `player-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+}
+
+function getRequestedRoomId() {
+  const raw = new URLSearchParams(window.location.search).get(ROOM_PARAM) || "";
+  const clean = raw.trim().slice(0, 48);
+  return /^[a-z0-9-]+$/i.test(clean) ? clean : "";
+}
+
+function clearRequestedRoomId() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has(ROOM_PARAM)) return;
+  url.searchParams.delete(ROOM_PARAM);
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function shareUrlForRoom(roomId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set(ROOM_PARAM, roomId);
+  return url.toString();
+}
+
+async function copyRoomLink(roomId) {
+  const url = shareUrlForRoom(roomId);
+  try {
+    await navigator.clipboard.writeText(url);
+    setOnlineStatus("Raumlink kopiert. In zweitem Tab oder an Freund schicken.", "ready");
+  } catch {
+    window.prompt("Raumlink kopieren:", url);
   }
 }
 
@@ -1108,10 +1138,11 @@ function renderOnlineRooms(onlineRooms = []) {
     card.innerHTML = `
       <div>
         <strong>Dein Ring ist offen</strong>
-        <span>${ownWaiting.arena.name} · wartet auf echte Karotte</span>
+        <span>${ownWaiting.arena.name} · Link im zweiten Tab öffnen</span>
       </div>
-      <button class="join-button" type="button" disabled>Wartet...</button>
+      <button class="join-button" type="button" data-copy-room="${ownWaiting.id}">Link kopieren</button>
     `;
+    card.querySelector("button").addEventListener("click", () => copyRoomLink(ownWaiting.id));
     els.onlineRoomList.append(card);
   }
 
@@ -1197,7 +1228,7 @@ async function pollOnlineWaitingRoom(roomId) {
       startOnlineFight(data.room);
       return;
     }
-    els.waitingText.textContent = "Online-Ring offen. Warte auf eine echte Karotte...";
+    els.waitingText.textContent = `Online-Ring offen: ${shareUrlForRoom(roomId)}`;
   } catch (error) {
     setOnlineStatus(error.message, "error");
     els.waitingText.textContent = "Online-Ring konnte nicht gehalten werden.";
@@ -1223,8 +1254,9 @@ async function openRoom() {
       }),
     });
     onlineWaitingRoomId = data.room.id;
-    setOnlineStatus("Dein Online-Ring ist offen. Schick den Link oder warte in der Lobby.", "ready");
-    els.waitingText.textContent = "Online-Ring offen. Warte auf eine echte Karotte...";
+    const roomLink = shareUrlForRoom(data.room.id);
+    setOnlineStatus("Dein Online-Ring ist offen. Link kopieren und im zweiten Tab öffnen.", "ready");
+    els.waitingText.textContent = `Online-Ring offen: ${roomLink}`;
     renderOnlineRooms([data.room]);
     onlinePollTimer = setInterval(() => pollOnlineWaitingRoom(data.room.id), 950);
   } catch (error) {
@@ -1234,9 +1266,9 @@ async function openRoom() {
   }
 }
 
-async function joinOnlineRoom(roomId) {
+async function joinOnlineRoom(roomId, options = {}) {
   try {
-    setOnlineStatus("Trete Online-Ring bei...", "ready");
+    setOnlineStatus(options.fromLink ? "Öffne Online-Raumlink..." : "Trete Online-Ring bei...", "ready");
     const data = await apiJson(`/api/online/rooms/${roomId}/join`, {
       method: "POST",
       body: JSON.stringify({
@@ -1244,6 +1276,12 @@ async function joinOnlineRoom(roomId) {
         profile: onlineProfilePayload(),
       }),
     });
+    if (data.room?.hostId === playerId && data.room?.status === "waiting") {
+      setOnlineStatus("Das ist dein eigener Ring. Öffne den Link in einem zweiten Tab oder auf einem anderen Gerät.", "ready");
+      renderOnlineRooms([data.room]);
+      return;
+    }
+    clearRequestedRoomId();
     startOnlineFight(data.room);
   } catch (error) {
     setOnlineStatus(error.message, "error");
@@ -2293,4 +2331,10 @@ renderFeaturedFight();
 renderPresets();
 renderRooms();
 renderProfile();
-setScreen("home");
+const requestedRoomId = getRequestedRoomId();
+if (requestedRoomId) {
+  setScreen("lobby");
+  joinOnlineRoom(requestedRoomId, { fromLink: true });
+} else {
+  setScreen("home");
+}
