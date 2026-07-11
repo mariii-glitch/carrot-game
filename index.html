@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Carrot Game</title>
+    <link rel="stylesheet" href="styles.css?v=polish8" />
+  </head>
+  <body>
+    <div class="garden-sky" aria-hidden="true">
+      <span class="sun-disc"></span>
+      <span class="cloud cloud-a"></span>
+      <span class="cloud cloud-b"></span>
+      <span class="wind wind-a"></span>
+      <span class="wind wind-b"></span>
+      <span class="leaf leaf-a"></span>
+      <span class="leaf leaf-b"></span>
+      <span class="leaf leaf-c"></span>
+      <span class="tiny-bird bird-a"></span>
+      <span class="tiny-bird bird-b"></span>
+      <span class="mouse-runner"></span>
+    </div>
+
+    <div class="app-shell">
+      <header class="gamebar">
+        <button class="brand" type="button" data-screen-target="home" aria-label="Carrot Game Home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>
+            <strong>Carrot Game</strong>
+            <small>Garden Brawl League</small>
+          </span>
+        </button>
+
+        <nav class="game-nav" aria-label="Game Navigation">
+          <button type="button" data-screen-target="home" aria-current="page">Home</button>
+          <button type="button" data-screen-target="locker">Locker</button>
+          <button type="button" data-screen-target="lobby">Lobby</button>
+          <button type="button" data-screen-target="career">Karriere</button>
+        </nav>
+
+        <div class="top-actions">
+          <button id="musicToggle" class="music-button" type="button" aria-pressed="false">
+            <span class="music-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span id="musicLabel">Musik</span>
+          </button>
+          <div class="profile-strip" aria-label="Karottenstatistik">
+            <span><strong id="stripPoints">0</strong> Punkte</span>
+            <span><strong id="stripRecord">0-0</strong></span>
+            <span><strong id="stripRank">Keimling</strong></span>
+          </div>
+        </div>
+      </header>
+
+      <main class="game-viewport" aria-live="polite">
+        <section id="screen-home" class="screen screen-home is-active" data-screen="home">
+          <div class="home-hero">
+            <div class="home-copy">
+              <span class="eyebrow">Heute im Garten</span>
+              <h1>Boxkampf im Beet.</h1>
+              <p>
+                Style deine Karotte, such dir einen Ring und prügle dich durch eine Liga aus
+                übermotiviertem Gemüse.
+              </p>
+              <div class="home-actions">
+                <button class="primary-button" type="button" data-screen-target="lobby">Kampf suchen</button>
+                <button class="secondary-button" type="button" data-screen-target="locker">Karotte stylen</button>
+              </div>
+
+              <div class="home-grid">
+                <article class="mini-panel">
+                  <span class="eyebrow">Nächster Fight</span>
+                  <h2 id="featuredOpponent">Basil Ben wartet</h2>
+                  <p id="featuredCopy">Ein lockerer Einstieg mit hohem Grins-Faktor.</p>
+                  <button class="text-button" type="button" data-quick-fight>Direkt in den Ring</button>
+                </article>
+                <article class="mini-panel">
+                  <span class="eyebrow">Style Score</span>
+                  <h2 id="styleScore">42</h2>
+                  <p>Mehr Ausrüstung bringt mehr Swagger, aber keine unfairen Treffer.</p>
+                </article>
+                <article class="mini-panel">
+                  <span class="eyebrow">Kampfmodus</span>
+                  <h2>Jab · Block · Special</h2>
+                  <p>Neue Aktionen machen die Runden taktischer und wilder.</p>
+                </article>
+              </div>
+            </div>
+
+            <div class="hero-fighter-panel">
+              <div class="spotlight"></div>
+              <div id="homeCarrot" class="hero-carrot"></div>
+              <div class="hero-tags">
+                <span id="homeName">Captain Carrot</span>
+                <span id="homeFit">Cap · Shorts · Gloves</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="screen-locker" class="screen screen-locker" data-screen="locker" hidden>
+          <div class="screen-heading">
+            <div>
+              <span class="eyebrow">Locker</span>
+              <h1>Karotte pimpen</h1>
+            </div>
+            <button class="primary-button compact" type="button" data-screen-target="lobby">Bereit für Lobby</button>
+          </div>
+
+          <div class="locker-layout">
+            <aside class="preview-studio">
+              <div class="studio-stage">
+                <span class="studio-light studio-light-a"></span>
+                <span class="studio-light studio-light-b"></span>
+                <div id="carrotPreview" class="carrot-preview" aria-label="Deine Karotte"></div>
+              </div>
+              <div class="style-summary">
+                <strong id="lockerNamePreview">Captain Carrot</strong>
+                <span id="lockerStylePreview">Street Garden Fit</span>
+              </div>
+            </aside>
+
+            <div class="locker-controls">
+              <div class="control-panel">
+                <label class="field-label" for="carrotName">Name</label>
+                <input id="carrotName" class="text-input" maxlength="18" autocomplete="off" />
+              </div>
+
+              <div class="control-panel">
+                <span class="field-label">Headwear</span>
+                <div class="segmented gear-grid" id="headwearPicker" aria-label="Kopfbedeckung">
+                  <button type="button" data-headwear="cap">Cap</button>
+                  <button type="button" data-headwear="visor">Visor</button>
+                  <button type="button" data-headwear="beanie">Beanie</button>
+                  <button type="button" data-headwear="crown">Crown</button>
+                  <button type="button" data-headwear="none">None</button>
+                </div>
+              </div>
+
+              <div class="control-panel">
+                <span class="field-label">Leaves</span>
+                <div class="segmented" id="leafPicker" aria-label="Karottenblätter">
+                  <button type="button" data-leaves="classic">Classic</button>
+                  <button type="button" data-leaves="wild">Wild</button>
+                  <button type="button" data-leaves="sprout">Sprout</button>
+                </div>
+              </div>
+
+              <div class="control-panel">
+                <span class="field-label">Shorts Pattern</span>
+                <div class="segmented" id="patternPicker" aria-label="Shorts Muster">
+                  <button type="button" data-pattern="solid">Solid</button>
+                  <button type="button" data-pattern="stripe">Stripe</button>
+                  <button type="button" data-pattern="dots">Dots</button>
+                </div>
+              </div>
+
+              <div class="control-panel">
+                <span class="field-label">Cap Farbe</span>
+                <div class="swatches" id="capSwatches"></div>
+              </div>
+
+              <div class="control-panel">
+                <span class="field-label">Shorts Farbe</span>
+                <div class="swatches" id="shortsSwatches"></div>
+              </div>
+
+              <div class="control-panel">
+                <span class="field-label">Handschuhe</span>
+                <div class="swatches" id="gloveSwatches"></div>
+              </div>
+
+              <div class="control-panel">
+                <span class="field-label">Gesicht</span>
+                <div class="segmented" id="facePicker" aria-label="Gesicht">
+                  <button type="button" data-face="cool">Cool</button>
+                  <button type="button" data-face="grin">Grins</button>
+                  <button type="button" data-face="focus">Fokus</button>
+                </div>
+              </div>
+
+              <div class="control-panel full">
+                <span class="field-label">Presets</span>
+                <div id="outfitPresets" class="preset-grid"></div>
+              </div>
+
+              <button id="saveProfile" class="primary-button full" type="button">Fit speichern</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="screen-lobby" class="screen screen-lobby" data-screen="lobby" hidden>
+          <div class="screen-heading">
+            <div>
+              <span class="eyebrow">Lobby</span>
+              <h1>Offene Gartenringe</h1>
+            </div>
+            <button id="createRoom" class="secondary-button compact" type="button">Eigenen Ring eröffnen</button>
+          </div>
+
+          <div class="lobby-layout">
+            <div class="yard-preview" aria-hidden="true">
+              <div class="garden-ring-mini">
+                <span class="mini-rope rope-one"></span>
+                <span class="mini-rope rope-two"></span>
+                <span class="mini-corner corner-a"></span>
+                <span class="mini-corner corner-b"></span>
+                <span class="mini-corner corner-c"></span>
+                <span class="mini-corner corner-d"></span>
+                <span class="mini-carrot mini-left"></span>
+                <span class="mini-carrot mini-right"></span>
+              </div>
+              <div id="waitingNotice" class="waiting-notice" hidden>
+                <span class="pulse-dot"></span>
+                <span id="waitingText">Dein Ring ist offen.</span>
+              </div>
+            </div>
+
+            <div id="roomList" class="room-grid"></div>
+          </div>
+        </section>
+
+        <section id="screen-career" class="screen screen-career" data-screen="career" hidden>
+          <div class="screen-heading">
+            <div>
+              <span class="eyebrow">Karriere</span>
+              <h1>Karottenakte</h1>
+            </div>
+            <button class="secondary-button compact" type="button" data-screen-target="lobby">Weiterboxen</button>
+          </div>
+
+          <div class="career-layout">
+            <section class="stat-grid">
+              <div>
+                <strong id="winsStat">0</strong>
+                <span>Siege</span>
+              </div>
+              <div>
+                <strong id="lossesStat">0</strong>
+                <span>Niederlagen</span>
+              </div>
+              <div>
+                <strong id="fightsStat">0</strong>
+                <span>Kämpfe</span>
+              </div>
+              <div>
+                <strong id="streakStat">0</strong>
+                <span>Serie</span>
+              </div>
+            </section>
+
+            <section class="career-card">
+              <span class="field-label">Auszeichnungen</span>
+              <div id="badgeList" class="badge-list"></div>
+            </section>
+
+            <section class="career-card">
+              <span class="field-label">Fight Log</span>
+              <ol id="careerLog" class="career-log"></ol>
+            </section>
+          </div>
+        </section>
+
+        <section id="screen-arena" class="screen screen-arena" data-screen="arena" hidden>
+          <div class="arena-shell">
+            <header class="arena-topline">
+              <div>
+                <span class="eyebrow">Gartenboxfeld</span>
+                <h1 id="arenaTitle">Runde im Beet</h1>
+              </div>
+              <div class="arena-actions">
+                <span id="eventPill" class="event-pill">Wind ruhig</span>
+                <button id="leaveArena" class="secondary-button compact" type="button">Lobby</button>
+              </div>
+            </header>
+
+            <div class="health-row">
+              <div class="fighter-status">
+                <span id="playerArenaName">Deine Karotte</span>
+                <div class="meter"><span id="playerHpBar"></span></div>
+              </div>
+              <div class="round-stack">
+                <div class="round-pill" id="roundPill">Runde 1</div>
+                <div class="combo-pill" id="comboPill">Combo x0</div>
+              </div>
+              <div class="fighter-status align-right">
+                <span id="opponentArenaName">Gegner</span>
+                <div class="meter"><span id="opponentHpBar"></span></div>
+              </div>
+            </div>
+
+            <div class="arena-stage" id="arenaStage">
+              <span class="garden-bed bed-left"></span>
+              <span class="garden-bed bed-right"></span>
+              <span class="arena-leaf arena-leaf-a"></span>
+              <span class="arena-leaf arena-leaf-b"></span>
+              <span class="ringside-sign sign-left">GARDEN BRAWL</span>
+              <span class="ringside-sign sign-right">ROOT RUSH</span>
+              <div class="boxing-field">
+                <span class="rope rope-top"></span>
+                <span class="rope rope-mid"></span>
+                <span class="rope rope-bottom"></span>
+                <span class="corner corner-one"></span>
+                <span class="corner corner-two"></span>
+                <span class="corner corner-three"></span>
+                <span class="corner corner-four"></span>
+                <div id="playerFighter" class="fighter fighter-player"></div>
+                <div id="opponentFighter" class="fighter fighter-opponent"></div>
+                <div id="impactBurst" class="impact-burst" aria-hidden="true"></div>
+              </div>
+            </div>
+
+            <div class="arena-controls">
+              <button id="jabButton" class="fight-button jab" type="button">Jab</button>
+              <button id="haymakerButton" class="fight-button haymaker" type="button">Haymaker</button>
+              <button id="blockButton" class="fight-button block" type="button">Block</button>
+              <button id="dodgeButton" class="fight-button dodge" type="button">Ausweichen</button>
+              <button id="specialButton" class="fight-button special" type="button">Root Rush</button>
+              <div class="meter-stack" aria-label="Energie und Fokus">
+                <div class="energy-wrap">
+                  <span>Energie</span>
+                  <div class="energy-meter"><span id="energyBar"></span></div>
+                </div>
+                <div class="energy-wrap focus-wrap">
+                  <span>Fokus</span>
+                  <div class="focus-meter"><span id="focusBar"></span></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="fightResult" class="fight-result" hidden>
+              <strong id="resultTitle">Gewonnen</strong>
+              <span id="resultCopy"></span>
+              <div class="result-actions">
+                <button id="rematchButton" class="secondary-button" type="button">Revanche</button>
+                <button id="backToLobby" class="primary-button" type="button">Zur Lobby</button>
+              </div>
+            </div>
+
+            <ol id="fightLog" class="fight-log" aria-live="polite"></ol>
+          </div>
+        </section>
+      </main>
+
+      <nav class="mobile-nav" aria-label="Mobile Game Navigation">
+        <button type="button" data-screen-target="home" aria-current="page">Home</button>
+        <button type="button" data-screen-target="locker">Locker</button>
+        <button type="button" data-screen-target="lobby">Lobby</button>
+        <button type="button" data-screen-target="career">Stats</button>
+      </nav>
+    </div>
+
+    <script src="app.js?v=polish8"></script>
+  </body>
+</html>
